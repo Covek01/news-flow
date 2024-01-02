@@ -9,6 +9,8 @@ using System.Net.Mail;
 using System.Net;
 using Microsoft.AspNetCore.Authorization;
 using System.Text;
+using System.Text.Json;
+
 
 namespace NewsFlow.Server.Controllers
 {
@@ -155,6 +157,132 @@ namespace NewsFlow.Server.Controllers
             }
 
             return BadRequest("Error verifying user account, try again later!");
+        }
+
+        [HttpPost("signin")]
+        public async Task<ActionResult> SignIn([FromBody] UserLoginDTO creds)
+        {
+            var result = await _neo4j.Cypher
+                .Match("(u:User)")
+                .Where((User u) => u.Email == creds.Email)
+                .Return(u => u.As<User>())
+                .ResultsAsync;
+
+            var user = result.FirstOrDefault();
+
+            if (user == null ||
+                BCrypt.Net.BCrypt.Verify(creds.Password, user.PasswordHash) == false)
+            {
+                return NotFound("User with given email or password does not exist");
+            }
+
+            var db = _redis.GetDatabase();
+
+            string sessionId = new PasswordGenerator.Password(
+                includeLowercase: true,
+                includeUppercase: true,
+                passwordLength: 50,
+                includeSpecial: false,
+                includeNumeric: false).Next();
+
+            db.StringSet($"sessions:{sessionId}", JsonSerializer.Serialize(user), expiry: TimeSpan.FromHours(2));
+            db.SetAdd("users:authenticated", user.Id);
+            db.StringSet($"users:last_active:{user.Id}", DateTime.Now.ToString("ddMMyyyyHHmmss"), expiry: TimeSpan.FromHours(2));
+
+            return Ok(new
+            {
+                Session = new
+                {
+                    Id = sessionId,
+                    Expires = DateTime.Now.ToLocalTime() + TimeSpan.FromHours(2)
+                },
+                User = user
+            });
+        }
+
+        [Authorize]
+        [HttpPut("signout")]
+        public async Task<ActionResult> UserSignOut()
+        {
+            var claims = HttpContext.User.Claims;
+            var sessionId = claims.Where(c => c.Type == "SessionId").FirstOrDefault()?.Value;
+            var userId = claims.FirstOrDefault(c => c.Type.Equals("Id"))?.Value;
+
+            var db = _redis.GetDatabase();
+
+            await db.KeyDeleteAsync(sessionId);
+            await db.KeyDeleteAsync($"users:last_active:{userId}");
+            await db.SetRemoveAsync("users:authenticated", userId);
+
+            return Ok("Signed out successfully");
+        }
+
+        [HttpGet("authcount")]
+        public async Task<ActionResult> AuthenticatedUsersCount()
+        {
+            var db = _redis.GetDatabase();
+
+            var count = 0;
+
+            var authenticatedUsers = (await db.SetMembersAsync("users:authenticated")).ToList();
+            foreach (var userId in authenticatedUsers)
+            {
+                var timeActive = (await db.StringGetAsync($"users:last_active:{userId}")).ToString();
+
+                if (string.IsNullOrEmpty(timeActive))
+                {
+                    await db.SetRemoveAsync("users:authenticated", userId);
+                    continue;
+                }
+
+                var timeActiveDt = DateTime.ParseExact(timeActive, "ddMMyyyyHHmmss", null);
+                if (DateTime.Now - timeActiveDt <= TimeSpan.FromMinutes(5))
+                {
+                    count++;
+                }
+            }
+
+            return Ok(count);
+        }
+
+
+        [HttpGet("search")]
+        public async Task<ActionResult> Search([FromQuery] string name)
+        {
+            var query = _neo4j.Cypher
+                .Match("(u:User)")
+                .Where("u.Name =~ $query")
+                .OrWhere("u.Email =~ $query")
+                .WithParam("query", $"(?i).*{name ?? ""}.*")
+                .Return(u => new
+                {
+                    u.As<User>().Id,
+                    u.As<User>().Name,
+                    u.As<User>().Email,
+                    u.As<User>().ImageUrl
+                })
+                .Limit(5);
+
+            return Ok(await query.ResultsAsync);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetUserById(long id)
+        {
+            var userId = long.Parse(HttpContext.User.Claims.FirstOrDefault(c => c.Type.Equals("Id"))?.Value ?? "-1");
+
+            var baseQueryResult = await _neo4j.Cypher
+                .Match("(u:User)")
+                .Where((User u) => u.Id == id)
+                .Return(u => new
+                {
+                    u.As<User>().Id,
+                    u.As<User>().Name,
+                    u.As<User>().Email,
+                    u.As<User>().ImageUrl
+                }).ResultsAsync;
+
+            return Ok(baseQueryResult);
         }
     }
 }
