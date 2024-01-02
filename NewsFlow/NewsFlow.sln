@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NewsFlow.Server", "NewsFlow.Server\NewsFlow.Server.csproj", "{39B6CBA7-667C-41DA-B06A-E0E80CE6D477}"
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "newsflow.client", "newsflow.client\newsflow.client.esproj", "{7861CBDC-E484-411F-97DB-2FB16EB82AA7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{39B6CBA7-667C-41DA-B06A-E0E80CE6D477}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39B6CBA7-667C-41DA-B06A-E0E80CE6D477}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39B6CBA7-667C-41DA-B06A-E0E80CE6D477}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39B6CBA7-667C-41DA-B06A-E0E80CE6D477}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7861CBDC-E484-411F-97DB-2FB16EB82AA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7861CBDC-E484-411F-97DB-2FB16EB82AA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7861CBDC-E484-411F-97DB-2FB16EB82AA7}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{7861CBDC-E484-411F-97DB-2FB16EB82AA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7861CBDC-E484-411F-97DB-2FB16EB82AA7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7861CBDC-E484-411F-97DB-2FB16EB82AA7}.Release|Any CPU.Deploy.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {797E8A35-9789-4EFA-810B-1B26D573BFEE}
+	EndGlobalSection
+EndGlobal
