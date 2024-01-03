@@ -3,8 +3,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import './App.css';
 
 import Homepage from "./components/homepage/Homepage"
-import Login from "./components/login/Login.tsx"
-import Registration from "./components/homepage/Homepage.tsx"
+import Login from "./components/login/Login"
+import Registration from "./components/homepage/Homepage"
 
 
 
@@ -14,7 +14,7 @@ function App() {
     return (
         <>
             <Routes>
-                <Route path="/">
+                <Route path="/">  
                     <Route index element={<Navigate to="/homepage" replace /> } />
                     <Route path="/homepage" element={<Homepage />} />
                     <Route path="/login" element={<Login />} />
