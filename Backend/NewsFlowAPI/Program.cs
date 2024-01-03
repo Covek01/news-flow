@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Neo4jClient;
-using NewsFlow.Server.Middlewares;
-using NewsFlow.Server.Services;
+using NewsFlowAPI.Middlewares;
+using NewsFlowAPI.Services;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +13,7 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 builder.Services.AddSingleton<IConnectionMultiplexer>(
     ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("redis")));
 builder.Services.AddSingleton<IBoltGraphClient>(options =>
@@ -68,22 +69,28 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseDefaultFiles();
-app.UseStaticFiles();
-
 // Configure the HTTP request pipeline.
+
 if (app.Environment.IsDevelopment())
 {
+    app.UseCors("CORSDevelopment");
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseCors("CORSProduction");
+}
+
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
+
 app.UseAuthorization();
 
-app.MapControllers();
+//app.UseMiddleware<ActiveUserCounter>();
 
-app.MapFallbackToFile("/index.html");
+app.MapControllers();
 
 app.Run();
