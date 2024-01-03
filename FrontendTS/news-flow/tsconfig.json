@@ -24,7 +24,6 @@
     "src"
   ],
   "connectionStrings": {
-    "redis": "",
-    "neo4j": ""
+    "localhost": ""
   } 
 }
