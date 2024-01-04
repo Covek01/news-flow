@@ -108,7 +108,7 @@ namespace NewsFlowAPI.Controllers
                    .WithParam("user", newUser)
                    .ExecuteWithoutResultsAsync();
 
-            return Ok("User added succesful!");
+            return Ok("User added succesfuly!");
         }
 
 
