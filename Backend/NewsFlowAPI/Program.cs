@@ -89,7 +89,7 @@ app.UseAuthentication();
 
 app.UseAuthorization();
 
-//app.UseMiddleware<ActiveUserCounter>();
+app.UseMiddleware<ActiveUsersCounter>();
 
 app.MapControllers();
 
