@@ -285,10 +285,46 @@ namespace NewsFlowAPI.Controllers
         }
 
 
-        //[HttpPost("test")]
-        //public async Task<ActionResult> Test()
-        //{
+        //[Authorize(Roles="Admin")]
+        [HttpDelete("DeleteExpiredConfirmation")]
+        public async Task<ActionResult> DeleteUsersExpiredConfirmation()
+        {
+            var unconfirmedUsers =await  _neo4j.Cypher
+                .Match("(u:User)")
+                .Where((User u) => u.EmailConfirmed == false)
+                .Return(u =>new
+                {
+                    u.As<User>().Id,
+                    u.As<User>().Email
+                })
+                .ResultsAsync;
 
-        //}
+            var db = _redis.GetDatabase();
+            Task[] deletes = [];
+            List<long> idsToDelete = new List<long>();
+            foreach(var user in unconfirmedUsers)
+            {
+                String? temp = db.StringGet(user.Email);
+                if (temp == null)
+                {
+                    idsToDelete.Add(user.Id);
+                    deletes.Append(
+                        _neo4j.Cypher
+                        .Match("(u:User)")
+                        .Where((User u) => u.Id == user.Id)
+                        .Delete("u").ExecuteWithoutResultsAsync()
+                        );
+                }
+            }
+            try
+            {
+                Task.WaitAll(deletes.ToArray());
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            return Ok(idsToDelete);
+        }
     }
 }
