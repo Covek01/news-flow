@@ -3,8 +3,9 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import './App.css';
 
 import Homepage from "./components/homepage/Homepage"
-import Login from "./components/login/Login"
+import SignIn from "./components/signin/Signin"
 import Registration from "./components/homepage/Homepage"
+import { Sign } from "crypto";
 
 
 
@@ -15,9 +16,9 @@ function App() {
         <>
             <Routes>
                 <Route path="/">  
-                    <Route index element={<Navigate to="/homepage" replace /> } />
+                    <Route index element={<Navigate to="/registration" replace /> } />
                     <Route path="/homepage" element={<Homepage />} />
-                    <Route path="/login" element={<Login />} />
+                    <Route path="/signin" element={<SignIn />} />
                     <Route path="/registration" element={<Registration />} />
                 </Route>
             </Routes>
