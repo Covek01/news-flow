@@ -33,15 +33,45 @@ namespace NewsFlowAPI.Controllers
         }
 
         [HttpPost("createnews")]
-        public async Task<ActionResult> CreateNews([FromBody] NewsDTO data)
+        public async Task<ActionResult> CreateNews([FromBody] NewsCreateDTO data)
         {
-            News news = new
+            try
             {
-                news.Title = data.Title,
-                news.Summary = data.Summary,
+                News news = new News
+                {
+                    Id = await _ids.NewsNext(),
+                    Title = data.Title,
+                    Summary = data.Summary,
+                    Text = data.Text,
+                    ImageUrl = data.ImageUrl
+                };
 
+                news.PostTime = DateTime.Now;
+
+                await _neo4j.Cypher
+                    .Create("(n:News $news)")
+                    .WithParam("news", news)
+                    .ExecuteWithoutResultsAsync();
+
+                var location = await _neo4j.Cypher
+                    .Match("(l:Location)")
+                    .Where((Location l) => l.Id == data.locationId)
+                    .Return(loc => loc.As<Location>())
+                    .ResultsAsync;
+
+                await _neo4j.Cypher
+                    .Match("(n:News)")
+                    .Where((News n) => n.Id == news.Id)
+                    .Create("(n)-[:LOCATED]->(loc:Location $l)")
+                    .WithParam("l", location)
+                    .ExecuteWithoutResultsAsync();
+
+                return Ok();
             }
-            using var session = _neo4j.Cypher
+            catch(Exception e)
+            {
+                return StatusCode(500);
+            }
         }
     }
 }

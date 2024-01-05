@@ -1,6 +1,7 @@
 ﻿
 
 using NewsFlowAPI.Models;
+using System.Text.Json.Serialization;
 
 namespace NewsFlowAPI.DTOs
 {
@@ -18,10 +19,10 @@ namespace NewsFlowAPI.DTOs
 
         public string Role { get; set; } = "User";
 
-        public List<FollowsTag> FollowedTags { get; set; } = new List<FollowsTag>();
-        public List<Location> Locations { get; set; } = new List<Location>();
+        //public List<FollowsTagDTO> FollowedTags { get; set; } = new List<FollowsTagDTO>();
+        public List<LocationDTO> Locations { get; set; } = new List<LocationDTO>();
         public List<UserDTO> SubscribedTo { get; set; } = new List<UserDTO>();
-
+        [JsonIgnore]
         public List<NewsDTO> NewsWritten { get; set; } = new List<NewsDTO>();
     }
 }
