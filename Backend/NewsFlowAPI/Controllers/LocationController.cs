@@ -14,20 +14,23 @@ namespace NewsFlowAPI.Controllers
         private readonly IConnectionMultiplexer _redis;
         private readonly IBoltGraphClient _neo4j;
         private readonly IIdentifierService _ids;
-
+        private readonly IQueryCacheService _cache;
         public LocationController(
             IConnectionMultiplexer redis,
             IBoltGraphClient neo4j,
-            IIdentifierService ids
+            IIdentifierService ids,
+            IQueryCacheService cache
             )
         {
             _redis = redis;
             _neo4j = neo4j;
             _ids = ids;
+            _cache = cache;
         }
         //[Authorize]
         [HttpPost("create/{name}")]
-        public async Task<ActionResult> CreateLocation([FromRoute] string name)
+        public async Task<ActionResult> CreateLocation(
+            [FromRoute] string name)
         {
             var newLocation = new Location
             {
@@ -101,7 +104,7 @@ namespace NewsFlowAPI.Controllers
             return Ok("Location updated");
         }
 
-        [Authorize]
+        //[Authorize]
         [HttpGet("get/{id}")]
         public async Task<ActionResult> GetLocation([FromRoute] long id)
         {
@@ -120,6 +123,22 @@ namespace NewsFlowAPI.Controllers
                 return NotFound($"Location with Id:{id} not found");
             }
             return Ok(loc.ToList()[0].Name);
+        }
+
+        [HttpPost("test")]
+        public async Task<ActionResult> Test()
+        {
+            TimeSpan ts = new TimeSpan(1, 0, 0);
+            var loc =_neo4j.Cypher
+                .Match("(l:Location)")
+                .Where((Location l) => l.Id == 2)
+                .Return(l => new
+                {
+                    l.As<Location>().Id,
+                    l.As<Location>().Name
+                });
+            _cache.QueryCacheParallerl(loc, "testtest", ts);
+            return Ok();
         }
     }
 }

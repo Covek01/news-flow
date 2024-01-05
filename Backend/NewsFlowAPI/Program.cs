@@ -38,7 +38,7 @@ builder.Services.AddAuthorization(options =>
 
 
 builder.Services.AddSingleton<IIdentifierService, IdentifierService>();
-
+builder.Services.AddSingleton<IQueryCacheService, QueryCacheService>();
 
 builder.Services.AddCors(options =>
 {
