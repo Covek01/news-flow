@@ -284,22 +284,6 @@ namespace NewsFlowAPI.Controllers
             return Ok(baseQueryResult);
         }
 
-        [HttpGet("{name}")]
-        public async Task<IActionResult> GetUserByName([FromRoute]string name)
-        {
-            var baseQueryResult = await _neo4j.Cypher
-                .Match("(u:User)")
-                .Where((User u) => u.Name == name)
-                .Return(u => new
-                {
-                    u.As<User>().Id,
-                    u.As<User>().Name,
-                    u.As<User>().Email,
-                    u.As<User>().ImageUrl
-                }).ResultsAsync;
-            return Ok(baseQueryResult);
-        }
-
 
         //[Authorize(Roles="Admin")]
         [HttpDelete("DeleteExpiredConfirmation")]
@@ -430,7 +414,7 @@ namespace NewsFlowAPI.Controllers
             var claims=HttpContext.User.Claims;
 
             var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-            userId = 1;
+            //userId = 1;
 
             if (userId==-1)
                 return Unauthorized("Error user not signed in");
