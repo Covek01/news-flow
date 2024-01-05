@@ -125,20 +125,6 @@ namespace NewsFlowAPI.Controllers
             return Ok(loc.ToList()[0].Name);
         }
 
-        [HttpPost("test")]
-        public async Task<ActionResult> Test()
-        {
-            TimeSpan ts = new TimeSpan(1, 0, 0);
-            var loc =_neo4j.Cypher
-                .Match("(l:Location)")
-                .Where((Location l) => l.Id == 2)
-                .Return(l => new
-                {
-                    l.As<Location>().Id,
-                    l.As<Location>().Name
-                });
-            _cache.QueryCacheParallerl(loc, "testtest", ts);
-            return Ok();
-        }
+       
     }
 }

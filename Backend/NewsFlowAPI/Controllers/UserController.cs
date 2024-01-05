@@ -300,7 +300,7 @@ namespace NewsFlowAPI.Controllers
                 .ResultsAsync;
 
             var db = _redis.GetDatabase();
-            Task[] deletes = [];
+            List<Task> deletes = new List<Task>();
             List<long> idsToDelete = new List<long>();
             foreach(var user in unconfirmedUsers)
             {
@@ -326,5 +326,124 @@ namespace NewsFlowAPI.Controllers
             }
             return Ok(idsToDelete);
         }
+
+        //[Authorize]
+        [HttpPut("FollowTag")]
+        public async Task<ActionResult> FollowTags([FromBody] List<long> tagIds)
+        {
+            var claims=HttpContext.User.Claims;
+
+            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+            //userId = 1;
+
+            if (userId==-1)
+                return Unauthorized("Error user not signed in");
+
+            var existingTags = await _neo4j.Cypher
+                .Match("(t:Tag)<-[:FOLLOWS_TAG]-(u:User)")
+                .Where("t.Id IN $tagIds")
+                .AndWhere((User u)=>u.Id==userId)
+                .WithParam("tagIds", tagIds)
+                .Return(t => t.As<Tag>().Id)
+                .ResultsAsync;
+
+            //var existingTagIds = existingTags.Select(tag => tag.Id).ToList();
+            var newTagIds = tagIds.Except(existingTags).ToList();
+
+            foreach (var tagId in newTagIds)
+            {
+                
+                await _neo4j.Cypher
+                    .Match("(u:User)", "(t:Tag)")
+                    .Where((User u) => u.Id == userId)
+                    .AndWhere((Tag t) => t.Id == tagId)
+                    .Create("(u)-[ft:FOLLOWS_TAG]->(t)")
+                    .Set("ft.ViewCount=$ViewCount, ft.LikeCount=$LikeCount, ft.InterestCoefficient=$InterestCoefficient")
+                    .WithParams(new {ViewCount=1, LikeCount=0, InterestCoefficient =1})
+                    .ExecuteWithoutResultsAsync();
+            }
+
+            return Ok(newTagIds.Count);
+        }
+
+
+
+
+        //[Authorize]
+        [HttpPut("AddLocation")]
+        public async Task<ActionResult> AddLocation([FromBody] List<long> locIds)
+        {
+            var claims = HttpContext.User.Claims;
+
+            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+            //userId = 1;
+
+            if (userId == -1)
+                return Unauthorized("Error user not signed in");
+
+            var existingLocations = await _neo4j.Cypher
+                .Match("(l:Location)<-[:FOLLOWS_LOCATION]-(u:User)")
+                .Where("l.Id IN $locIds")
+                .AndWhere((User u) => u.Id == userId)
+                .WithParam("locIds", locIds)
+                .Return(l => l.As<Location>().Id)
+                .ResultsAsync;
+
+            //var existingLocIds = existingLocations.Select(tag => tag.Id).ToList();
+            var newLocIds = locIds.Except(existingLocations).ToList();
+
+            foreach (var locId in newLocIds)
+            {
+
+                await _neo4j.Cypher
+                    .Match("(u:User)", "(l:Location)")
+                    .Where((User u) => u.Id == userId)
+                    .AndWhere((Location l) => l.Id == locId)
+                    .Create("(u)-[fl:FOLLOWS_LOCATION]->(l)")
+                    .ExecuteWithoutResultsAsync();
+            }
+
+            return Ok(newLocIds.Count);
+        }
+
+
+          //[Authorize]
+        [HttpPut("SubscribeTo")]
+        public async Task<ActionResult> SubscribeTo([FromBody] List<long> userIds)
+        {
+            var claims=HttpContext.User.Claims;
+
+            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+            userId = 1;
+
+            if (userId==-1)
+                return Unauthorized("Error user not signed in");
+
+            var alreadySubscribed = await _neo4j.Cypher
+                .Match("(u1:User)-[:SUBSCRIBED_TO]->(u2:User)")
+                .Where("u2.Id IN $userIds")
+                .AndWhere((User u1)=>u1.Id==userId)
+                .WithParam("userIds", userIds)
+                .Return(u2 => u2.As<User>().Id)
+                .ResultsAsync;
+
+            var newUserIds = userIds.Except(alreadySubscribed).ToList();
+
+            foreach (var uId in newUserIds)
+            {
+                
+                await _neo4j.Cypher
+                    .Match("(u1:User)", "(u2:User)")
+                    .Where((User u1) => u1.Id == userId)
+                    .AndWhere((User u2)=>u2.Role=="Author")
+                    .AndWhere((User u2) => u2.Id == uId)
+                    .Create("(u1)-[:SUBSCRIBED_TO]->(u2)")
+                    .ExecuteWithoutResultsAsync();
+            }
+
+            return Ok(newUserIds.Count);
+        }
+
+        //edit user 
     }
 }

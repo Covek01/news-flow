@@ -156,7 +156,7 @@ namespace NewsFlowAPI.Controllers
             //var nest = db.SetScanAsync("tags:nodes", "*S*");
             //var nest =
             string setName = "tags:nodes";
-            string pattern = "*"+name+"*"; // Specify the pattern to match
+            string pattern = "*Id*Name*" + name + "*"; // Specify the pattern to match
             int count = 10;
             long cursor = 0;
             RedisResult scanResult;
@@ -181,6 +181,38 @@ namespace NewsFlowAPI.Controllers
 
 
             return Ok(tagsMatched);
+        }
+
+        //[Authorize]
+        [HttpGet("GetTags/{id}")]
+        public async Task<ActionResult> GetTagsForUser([FromRoute] int id)
+        {
+            var tags = await _neo4j.Cypher
+                .Match("(t:Tag)<-[:FOLLOWS_TAG]-(u:User)")
+                .Where((User u) => u.Id == id)
+                .Return(t => t.As<Tag>())
+                .ResultsAsync;
+            return Ok(tags);
+        }
+
+        //[Authorize]
+        [HttpGet("GetMyTags")]
+        public async Task<ActionResult> GetMyTags()
+        {
+            var claims = HttpContext.User.Claims;
+
+            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+            //userId = 1;
+
+            if (userId == -1)
+                return Unauthorized("Error user not signed in");
+
+            var tags = await _neo4j.Cypher
+                .Match("(t:Tag)<-[:FOLLOWS_TAG]-(u:User)")
+                .Where((User u) => u.Id == userId)
+                .Return(t => t.As<Tag>())
+                .ResultsAsync;
+            return Ok(tags);
         }
     }
 }
