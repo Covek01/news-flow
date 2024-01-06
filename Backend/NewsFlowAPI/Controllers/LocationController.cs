@@ -121,5 +121,21 @@ namespace NewsFlowAPI.Controllers
             }
             return Ok(loc.ToList()[0].Name);
         }
+
+
+        //[Authorize]
+        [HttpGet("get")]
+        public async Task<ActionResult> GetAllLocations()
+        {
+            var loc = await _neo4j.Cypher
+                .Match("(l:Location)")
+                .Return(l => new
+                {
+                    l.As<Location>().Id,
+                    l.As<Location>().Name
+                })
+                .ResultsAsync;
+            return Ok(loc.ToList());
+        }
     }
 }

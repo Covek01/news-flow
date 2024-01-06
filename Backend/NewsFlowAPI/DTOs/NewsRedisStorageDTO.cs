@@ -1,14 +1,14 @@
-﻿
-namespace NewsFlowAPI.DTOs
+﻿namespace NewsFlowAPI.DTOs
 {
-    public class NewsCreateDTO
+    public class NewsRedisStorageDTO
     {
+        public long Id { get; set; }
         public string Title { get; set; } = String.Empty;
         public string Summary { get; set; } = String.Empty;
         public string Text { get; set; } = String.Empty;
         public string ImageUrl { get; set; } = String.Empty;
-        public List<long> tagsIds { get; set; } = new List<long>();
-        public int authorId { get; set; }
-        public int locationId { get; set; }
+        public long authorId { get; set; }
+        public long? locationId { get; set; }
+        public DateTime PostTime { get; set; }
     }
 }

@@ -11,10 +11,12 @@ namespace NewsFlowAPI.Models
         public string ImageUrl { get; set; } = String.Empty;
 
         public User? Author { get; set; }
+        public long AuthorId { get; set; }
 
         public List<Tag> Tags { get; set; } = new List<Tag>();
 
         public Location? Location { get; set; }
+        public long? LocationId { get; set; }
         public DateTime PostTime { get; set; }
         public int ViewsCount { get; set; }
 

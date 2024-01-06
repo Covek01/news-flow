@@ -144,6 +144,22 @@ namespace NewsFlowAPI.Controllers
             return Ok(tag.ToList()[0].Name);
         }
 
+        //[Authorize(Roles ="writer")]
+        [HttpGet("getAllTags")]
+        public async Task<ActionResult> GetAllTags()
+        {
+            var tag = await _neo4j.Cypher
+               .Match("(t:Tag)")
+               .Return(t => new
+               {
+                   t.As<Tag>().Id,
+                   t.As<Tag>().Name
+               })
+               .ResultsAsync;
+
+            return Ok(tag);
+        }
+
         [HttpGet("getByName/{name}")]
         public async Task<ActionResult> GetTagByName([FromRoute] string name)
         {
