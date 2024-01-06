@@ -10,6 +10,7 @@ using System.Net.Mail;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Runtime.CompilerServices;
 
 namespace NewsFlowAPI.Controllers
 {
@@ -367,7 +368,27 @@ namespace NewsFlowAPI.Controllers
         }
 
 
+        //[Authorize]
+        [HttpPut("UnfollowTag")]
+        public async Task<ActionResult> UnfollowTags([FromBody] List<long> tagIds)
+        {
+            var claims = HttpContext.User.Claims;
 
+            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+
+            if (userId == -1)
+                return Unauthorized("Error user not signed in");
+
+             await _neo4j.Cypher
+                .Match("(t:Tag)<-[ft:FOLLOWS_TAG]-(u:User)")
+                .Where("t.Id IN $tagIds")
+                .AndWhere((User u) => u.Id == userId)
+                .WithParam("tagIds", tagIds)
+                .Delete("ft")
+                .ExecuteWithoutResultsAsync();
+          
+            return Ok();
+        }
 
         //[Authorize]
         [HttpPut("AddLocation")]
@@ -407,8 +428,29 @@ namespace NewsFlowAPI.Controllers
         }
 
 
-          //[Authorize]
-        [HttpPut("SubscribeTo")]
+        //[Authorize]
+        [HttpPut("RemoveLocation")]
+        public async Task<ActionResult> RemoveLocation([FromBody] List<long> locIds)
+        {
+            var claims = HttpContext.User.Claims;
+
+            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+
+            if (userId == -1)
+                return Unauthorized("Error user not signed in");
+
+            await _neo4j.Cypher
+                .Match("(l:Location)<-[fl:FOLLOWS_LOCATION]-(u:User)")
+                .Where("l.Id IN $locIds")
+                .AndWhere((User u) => u.Id == userId)
+                .WithParam("locIds", locIds)
+                .Delete("fl")
+                .ExecuteWithoutResultsAsync();
+
+            return Ok();
+        }
+            //[Authorize]
+            [HttpPut("SubscribeTo")]
         public async Task<ActionResult> SubscribeTo([FromBody] List<long> userIds)
         {
             var claims=HttpContext.User.Claims;
@@ -444,6 +486,57 @@ namespace NewsFlowAPI.Controllers
             return Ok(newUserIds.Count);
         }
 
-        //edit user 
+
+
+        //[Authorize]
+        [HttpPut("UnsubscribeFrom")]
+        public async Task<ActionResult> UnsubscribeFrom([FromBody] List<long> userIds)
+        {
+            var claims = HttpContext.User.Claims;
+
+            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+
+            if (userId == -1)
+                return Unauthorized("Error user not signed in");
+
+            await _neo4j.Cypher
+                .Match("(u1:User)-[st:SUBSCRIBED_TO]->(u2:User)")
+                .Where("u2.Id IN $userIds")
+                .AndWhere((User u1) => u1.Id == userId)
+                .WithParam("userIds", userIds)
+                .Delete("st")
+                .ExecuteWithoutResultsAsync();
+
+            return Ok();
+        }
+            //edit user 
+            //[Authorize]
+            [HttpPut("UpdateUser/{id}")]
+        public async Task<ActionResult> UpdateUser([FromRoute] long id, [FromBody] UserDTO editedUser)
+        {
+            var user = await _neo4j.Cypher
+                .Match("(u:User)")
+                .Where((User u) => u.Id == id)
+                .Return(u => u.As<User>())
+                .ResultsAsync;
+
+            var u = user.ToList().First();
+            u.Name=editedUser.Name;
+            u.Email=editedUser.Email;
+            u.Phone = editedUser.Phone;
+            u.ImageUrl = editedUser.ImageUrl;
+            u.Country = editedUser.Country;
+            u.City = editedUser.City;
+            u.Role = editedUser.Role;
+
+            await _neo4j.Cypher
+                .Match("(uu:User)")
+                .Where((User uu) => uu.Id == id)
+                .Set("uu=$us")
+                .WithParam("us", u)
+                .ExecuteWithoutResultsAsync();
+
+            return Ok(u);
+        }
     }
 }
