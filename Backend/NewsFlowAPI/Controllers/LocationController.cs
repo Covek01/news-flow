@@ -14,20 +14,23 @@ namespace NewsFlowAPI.Controllers
         private readonly IConnectionMultiplexer _redis;
         private readonly IBoltGraphClient _neo4j;
         private readonly IIdentifierService _ids;
-
+        private readonly IQueryCacheService _cache;
         public LocationController(
             IConnectionMultiplexer redis,
             IBoltGraphClient neo4j,
-            IIdentifierService ids
+            IIdentifierService ids,
+            IQueryCacheService cache
             )
         {
             _redis = redis;
             _neo4j = neo4j;
             _ids = ids;
+            _cache = cache;
         }
         //[Authorize]
         [HttpPost("create/{name}")]
-        public async Task<ActionResult> CreateLocation([FromRoute] string name)
+        public async Task<ActionResult> CreateLocation(
+            [FromRoute] string name)
         {
             var newLocation = new Location
             {
@@ -101,7 +104,7 @@ namespace NewsFlowAPI.Controllers
             return Ok("Location updated");
         }
 
-        [Authorize]
+        //[Authorize]
         [HttpGet("get/{id}")]
         public async Task<ActionResult> GetLocation([FromRoute] long id)
         {
@@ -122,6 +125,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(loc.ToList()[0].Name);
         }
 
+<<<<<<< HEAD
 
         //[Authorize]
         [HttpGet("get")]
@@ -137,5 +141,8 @@ namespace NewsFlowAPI.Controllers
                 .ResultsAsync;
             return Ok(loc.ToList());
         }
+=======
+       
+>>>>>>> 24abaa14a8dde1616b959fba4f75fef2f086e708
     }
 }

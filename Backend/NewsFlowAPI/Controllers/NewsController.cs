@@ -6,10 +6,17 @@ using NewsFlowAPI.Models;
 using Neo4jClient;
 using NewsFlowAPI.Services;
 using StackExchange.Redis;
+<<<<<<< HEAD
 using Neo4j.Driver;
 using System.Linq;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using Newtonsoft.Json;
+=======
+using Microsoft.AspNetCore.Authorization;
+using Newtonsoft.Json;
+using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+>>>>>>> 24abaa14a8dde1616b959fba4f75fef2f086e708
 
 namespace NewsFlowAPI.Controllers
 {
@@ -20,20 +27,29 @@ namespace NewsFlowAPI.Controllers
         private readonly IConnectionMultiplexer _redis;
         private readonly IBoltGraphClient _neo4j;
         private readonly IIdentifierService _ids;
+        private readonly IConfiguration _configuration;
+        private readonly IRedisNewsSubscriber _subscriber;
 
         public NewsController(
             IConnectionMultiplexer redis,
             IBoltGraphClient neo4j,
-            IIdentifierService ids
+            IIdentifierService ids,
+            IConfiguration config,
+            IRedisNewsSubscriber subscriber
             )
         {
             _redis = redis;
             _neo4j = neo4j;
             _ids = ids;
+<<<<<<< HEAD
             _newestNewsKey = "newestnews";
 
             _maxLengthOfNewestNews = 20;
             //this.CheckAndInitializeKeysInRedis();
+=======
+            _configuration = config;
+            _subscriber = subscriber;
+>>>>>>> 24abaa14a8dde1616b959fba4f75fef2f086e708
         }
 
        /* public async Task CheckAndInitializeKeysInRedis()
@@ -295,6 +311,81 @@ namespace NewsFlowAPI.Controllers
             {
                 return StatusCode(500, e);
             }
+
         }
+
+        //[Authorize]
+        [HttpGet("ClickNews/{id}")]
+        public async Task<ActionResult> ClickNewsId([FromRoute] long id)
+        {
+            var db = _redis.GetDatabase();
+            var news = db.StringGet($"news:{id}").ToString();
+            if (String.IsNullOrEmpty(news))
+            {
+                var newsNeo = await _neo4j.Cypher
+                    .Match("(n:News)")
+                    .Where((News n) => n.Id == id)
+                    .Return(n => n.As<News>())
+                    .Limit(1)
+                    .ResultsAsync;
+
+                if (newsNeo.Count() == 0)
+                {
+                    return NotFound("News Not Found");
+                }
+
+                var newsNeoObject = newsNeo.First();
+                newsNeoObject.ViewsCount += 1;
+                float falloff = float.Parse(_configuration.GetSection("ViewsLastPeriodFalloff").Value);
+                newsNeoObject.ViewsLastPeriod = (int)Math.Round(falloff * newsNeoObject.ViewsLastPeriod,0);
+
+                //na net pise da ne moze transaction ako imaju razlicit ttl :(
+                db.StringSet($"news:{id}",
+                    System.Text.Json.JsonSerializer.Serialize(newsNeoObject),
+                    expiry:TimeSpan.FromHours(float.Parse(_configuration.GetSection("NewsInRedisPeriodHours").Value)));
+                
+                db.StringSet($"newsExpire:{id}","",
+                    expiry: TimeSpan.FromHours(0.96*float.Parse(_configuration.GetSection("NewsInRedisPeriodHours").Value)));
+                
+                _neo4j.Cypher
+                    .Match("(n:News)")
+                    .Where((News n) => n.Id == id)
+                    .Set("n.ViewsCount=$views")
+                    .WithParam("views", newsNeoObject.ViewsCount + 1)
+                    .ExecuteWithoutResultsAsync();
+
+                _subscriber.Subscribe(_redis, _neo4j);
+                _subscriber.AddKey($"newsExpire:{id}");
+
+                return Ok(newsNeoObject);
+            }
+
+            News newsObject= JsonConvert.DeserializeObject<News>(news);
+            
+            newsObject.ViewsLastPeriod += 1;
+            newsObject.ViewsCount += 1;
+            var updatedValue = JsonConvert.SerializeObject(newsObject);
+            db.StringSet($"news:{id}", updatedValue, expiry: db.KeyTimeToLive($"news:{id}"));
+
+
+            _neo4j.Cypher
+                .Match("(n:News)")
+                .Where((News n) => n.Id == id)
+                .Set("n.ViewsCount=$views")
+                .WithParam("views", newsObject.ViewsCount)
+                .ExecuteWithoutResultsAsync();
+
+            return Ok(newsObject);
+        }
+
+        //[Authorize]
+        [HttpGet("GetTrending")]
+        public async Task<ActionResult> GetTrending()
+        {
+
+
+            return BadRequest("Not implemented");
+        }
+
     }
 }

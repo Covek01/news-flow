@@ -26,8 +26,11 @@ builder.Services.AddSingleton<IBoltGraphClient>(options =>
     return neo4jClient;
 });
 
-builder.Services.AddAuthentication("session-scheme")
-   .AddScheme<AuthenticationSchemeOptions, SessionAuthenticationSchemeHandler>("session-scheme", options => { });
+builder.Services.AddAuthentication("session-scheme").AddScheme<AuthenticationSchemeOptions, SessionAuthenticationSchemeHandler>("session-scheme", options => { });
+
+//builder.Services.AddAuthentication("session-scheme")
+//   .AddScheme<AuthenticationSchemeOptions, SessionAuthenticationSchemeHandler>("session-scheme", options => { });
+
 builder.Services.AddAuthorization(options =>
 {
     options.DefaultPolicy = new AuthorizationPolicyBuilder()
@@ -37,8 +40,10 @@ builder.Services.AddAuthorization(options =>
 });
 
 
-builder.Services.AddSingleton<IIdentifierService, IdentifierService>();
 
+builder.Services.AddSingleton<IIdentifierService, IdentifierService>();
+builder.Services.AddSingleton<IQueryCacheService, QueryCacheService>();
+builder.Services.AddSingleton<IRedisNewsSubscriber, RedisNewsSubscriber>();
 
 builder.Services.AddCors(options =>
 {
