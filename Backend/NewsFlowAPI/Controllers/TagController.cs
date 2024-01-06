@@ -44,7 +44,7 @@ namespace NewsFlowAPI.Controllers
                 .ExecuteWithoutResultsAsync();
 
             var db = _redis.GetDatabase();
-            db.SetAdd("tags:nodes", JsonSerializer.Serialize(newTag));
+            db.SetAdd("tags:nodes", JsonSerializer.Serialize(new {Id=newTag.Id,Name=newTag.Name}));
 
 
             return Ok("Tag successfully added!");

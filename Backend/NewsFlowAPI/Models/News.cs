@@ -17,10 +17,10 @@ namespace NewsFlowAPI.Models
         public Location? Location { get; set; }
         public DateTime PostTime { get; set; }
         public int ViewsCount { get; set; }
-
+        public int LikeCount { get; set; }
         public int ViewsLastPeriod { get; set; }
-        public int CommentsLastPeriod { get; set; }
+        public int LikesLastPeriod { get; set; }
 
-
+        public DateTime LastPeriodTime { get; set; }
     }
 }
