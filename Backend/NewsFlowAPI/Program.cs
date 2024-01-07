@@ -44,6 +44,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddSingleton<IIdentifierService, IdentifierService>();
 builder.Services.AddSingleton<IQueryCacheService, QueryCacheService>();
 builder.Services.AddSingleton<IRedisNewsSubscriber, RedisNewsSubscriber>();
+builder.Services.AddSingleton<IRedisNewsSubscriber, RedisTrendingSubscriber>();
 
 builder.Services.AddCors(options =>
 {

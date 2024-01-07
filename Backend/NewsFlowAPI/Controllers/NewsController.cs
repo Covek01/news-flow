@@ -27,6 +27,7 @@ namespace NewsFlowAPI.Controllers
         private readonly IIdentifierService _ids;
         private readonly IConfiguration _configuration;
         private readonly IRedisNewsSubscriber _subscriber;
+        private readonly IRedisNewsSubscriber _trendSub;
         private readonly IQueryCacheService _queryCache;
 
         public NewsController(
@@ -35,6 +36,7 @@ namespace NewsFlowAPI.Controllers
             IIdentifierService ids,
             IConfiguration config,
             IRedisNewsSubscriber subscriber,
+            IRedisNewsSubscriber trendSub,
             IQueryCacheService queryCache
             )
         {
@@ -47,21 +49,22 @@ namespace NewsFlowAPI.Controllers
             //this.CheckAndInitializeKeysInRedis();
             _configuration = config;
             _subscriber = subscriber;
+            _trendSub = trendSub;
             _queryCache = queryCache;
         }
 
-       /* public async Task CheckAndInitializeKeysInRedis()
-        {
-            var db = _redis.GetDatabase();
+        /* public async Task CheckAndInitializeKeysInRedis()
+         {
+             var db = _redis.GetDatabase();
 
-            if (!db.KeyExists(_trendingNewsKey))
-            {
-                await db.ListLeftPushAsync(_trendingNewsKey, )
-            }
+             if (!db.KeyExists(_trendingNewsKey))
+             {
+                 await db.ListLeftPushAsync(_trendingNewsKey, )
+             }
 
-            
-        }*/
-        
+
+         }*/
+
         public IActionResult Index()
         {
             return View();
@@ -150,7 +153,7 @@ namespace NewsFlowAPI.Controllers
                 var db = _redis.GetDatabase();
 
                 //if max length of new news is here, then take out the last one 
-                if (db.ListLength(_newestNewsKey) > 20 )
+                if (db.ListLength(_newestNewsKey) > 20)
                 {
                     db.ListRightPop(_newestNewsKey);
                 }
@@ -171,7 +174,7 @@ namespace NewsFlowAPI.Controllers
 
                 return Ok(news);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 return StatusCode(500, e);
             }
@@ -313,9 +316,213 @@ namespace NewsFlowAPI.Controllers
         }
 
         //[Authorize]
+        [HttpGet("ClickNews2/{id}")]
+        public async Task<ActionResult> ClickNewsId2([FromRoute] long id)
+        {
+            var db = _redis.GetDatabase();
+            var query = _neo4j.Cypher
+                    .Match("(n:News)")
+                    .Where((News n) => n.Id == id)
+                    .Return(n => n.As<News>())
+                    .Limit(1);
+
+            var news = (await _queryCache.QueryCache(query, $"news:{id}", TimeSpan.FromHours(2)));
+            db.StringSet($"shadow:news:{id}","shadow",expiry:TimeSpan.FromHours(0.95 * 2));
+            _subscriber.Subscribe(_redis, _neo4j);
+            _subscriber.AddKey($"shadow:news:{id}");
+            if (news.Count()==0)
+            {
+                return NotFound("News not found!");
+            }
+            news.First().ViewsCount += 1;
+            //var newsSingle = news.First();
+            //newsSingle.ViewsCount += 1;
+            //_neo4j.Cypher
+            //        .Match("(n:News)")
+            //        .Where((News n) => n.Id == id)
+            //        .Set("n.ViewsCount=$views")
+            //        .WithParam("views", news.ViewsCount + 1)
+            //        .ExecuteWithoutResultsAsync();
+
+            db.StringSet($"news:{id}", JsonConvert.SerializeObject(news), expiry: db.KeyTimeToLive($"news:{id}"));
+
+            return Ok(news);
+        }
+
+        //[Authorize]
+        [HttpGet("GetTrending2")]
+        public async Task<ActionResult> GetTrending2()
+        {
+            var db = _redis.GetDatabase();
+            var trending = db.SortedSetRangeByRankAsync("trending:news:", 0, 9, Order.Descending).Result;
+            List<RedisValue> newsRedisValue = trending.ToList();
+            List<News> newsObjects = new List<News>();
+            if(newsRedisValue.Count > 0)
+            {
+                foreach (var nId in newsRedisValue)
+                {
+                    //newsObjects.Add(JsonConvert.DeserializeObject<News>(n.ToString()));
+                    var query = _neo4j.Cypher
+                   .Match("(n:News)")
+                   .Where((News n) => n.Id == nId)
+                   .Return(n => n.As<News>())
+                   .Limit(1);
+                    var news = (await _queryCache.QueryCacheParallerl(query, $"news:{nId}", TimeSpan.FromHours(2)));
+                    if (news.Count() == 0)
+                    {
+                        return BadRequest("Try again later");
+                    }
+                    var newsSingle = news.First();
+                    newsObjects.Add(newsSingle);
+
+                }
+            }
+            var expired = db.StringGet("trending:news:update").ToString();
+            if (string.IsNullOrEmpty(expired))
+            {
+                db.StringSet("trending:news:update", "trending_expiration", TimeSpan.FromHours(0.5));
+                _trendSub.Subscribe(_redis, _neo4j);
+                _trendSub.AddKey("trending:news:update");
+            }
+            //await db.SortedSetAddAsync("trending:news:",null);
+            return Ok(newsObjects);
+
+        }
+
+        //NE KORISTI SE 
+        //[Authorize]
+        [HttpGet("GetTrending")]
+        public async Task<ActionResult> GetTrending()
+        {
+            return BadRequest("DEPRECATED");
+            var db = _redis.GetDatabase();
+
+            var trending = db.SortedSetRangeByRankAsync("trending:news:", 0, 9, Order.Descending).Result;
+            List<RedisValue> newsRedisValue = trending.ToList();
+
+            List<News> newsObjects = new List<News>();
+
+
+
+            if (trending.Count() < 10)
+            {
+                string pattern = "news:*";
+                var keysList = new List<RedisKey>();
+                var cursor = default(long);
+
+                do
+                {
+                    var result = db.Execute("SCAN", cursor.ToString(), "MATCH", pattern, "COUNT", "20");
+                    var innerResult = (RedisResult[])result;
+
+                    cursor = long.Parse((string)innerResult[0]);
+                    var keys = (string[])innerResult[1];
+
+                    foreach (var key in keys)
+                    {
+                        keysList.Add(key);
+                    }
+                } while (cursor != 0);
+
+                var transaction = db.CreateTransaction();
+                var newsList = new List<News>();
+
+                foreach (var key in keysList)
+                {
+                    var news = db.StringGet(key).ToString();
+                    var newsObject = JsonConvert.DeserializeObject<News>(news);
+                    newsList.Add(newsObject);
+                    db.StringSet("trending:expire:", "not-expired", expiry: TimeSpan.FromHours(2));
+                    transaction.SortedSetAddAsync("trending:news:", news, newsObject.ViewsLastPeriod + newsObject.LikeCount / 3);
+                }
+
+                await transaction.ExecuteAsync();
+                trending = db.SortedSetRangeByRankAsync("trending:news:", 0, 9, Order.Descending).Result;
+                newsRedisValue = trending.ToList();
+
+            }
+            if (trending.Count() != 0)
+            {
+
+                foreach (var n in newsRedisValue)
+                {
+                    newsObjects.Add(JsonConvert.DeserializeObject<News>(n.ToString()));
+                }
+            }
+
+
+            var expiredCheck = db.StringGet("trending:expire:");
+
+            if (string.IsNullOrEmpty(expiredCheck))
+            {
+                foreach (var tr in newsObjects)
+                {
+                    await db.SortedSetDecrementAsync("trending:expire:", JsonConvert.SerializeObject(tr), tr.ViewsLastPeriod);
+                    await db.SortedSetRemoveRangeByScoreAsync("trending:news:", int.MinValue, 0);
+                }
+            }
+            return Ok(newsObjects);
+
+
+        }
+
+
+        ////[Authorize]
+        //[HttpGet("GetTrending")]
+        //public async Task<ActionResult> GetTrending()
+        //{
+        //    var db = _redis.GetDatabase();
+        //    var trending = db.StringGet("trending:news:");
+        //    if (string.IsNullOrEmpty(trending))
+        //    {
+        //        string pattern = "news:*";
+        //        List<string> keysList = new List<string>();
+        //        var cursor = default(long);
+        //        do
+        //        {
+        //            var result = db.Execute("SCAN", cursor.ToString(), "MATCH", pattern, "COUNT", "20");
+        //            var innerResult = (RedisResult[])result;
+
+        //            cursor = long.Parse((string)innerResult[0]);
+
+        //            var keys = (string[])innerResult[1];
+
+        //            foreach (var key in keys)
+        //            {
+        //                keysList.Add(key);
+        //            }
+        //        } while (cursor != 0);
+
+        //        List<News> newsList = new List<News>();
+
+        //        foreach (var key in keysList)
+        //        {
+        //            var news = db.StringGet(key).ToString();
+        //            var newsObject = JsonConvert.DeserializeObject<News>(news);
+        //            newsList.Add(newsObject);
+        //        }
+
+        //        newsList.Sort(delegate (News n2, News n1) { return (n1.ViewsLastPeriod + n1.LikeCount / 3 - n2.ViewsLastPeriod - n2.LikeCount / 3); });
+        //        db.StringSet("trending:news:", JsonConvert.SerializeObject(newsList.Take(10)), expiry: TimeSpan.FromHours(2));
+        //        return Ok(newsList.Take(10));
+
+        //    }
+        //    else
+        //    {
+        //        var trendingList = JsonConvert.DeserializeObject<List<News>>(trending);
+        //        return Ok(trendingList.Take(10));
+        //    }
+        //}
+
+
+
+
+        //NE KORISTI SE
+        //[Authorize]
         [HttpGet("ClickNews/{id}")]
         public async Task<ActionResult> ClickNewsId([FromRoute] long id)
         {
+            return BadRequest("DEPRECATED");
             var db = _redis.GetDatabase();
             var news = db.StringGet($"news:{id}").ToString();
             if (String.IsNullOrEmpty(news))
@@ -335,16 +542,16 @@ namespace NewsFlowAPI.Controllers
                 var newsNeoObject = newsNeo.First();
                 newsNeoObject.ViewsCount += 1;
                 float falloff = float.Parse(_configuration.GetSection("ViewsLastPeriodFalloff").Value);
-                newsNeoObject.ViewsLastPeriod = (int)Math.Round(falloff * newsNeoObject.ViewsLastPeriod,0);
+                newsNeoObject.ViewsLastPeriod = (int)Math.Round(falloff * newsNeoObject.ViewsLastPeriod, 0);
 
                 //na net pise da ne moze transaction ako imaju razlicit ttl :(
                 db.StringSet($"news:{id}",
                     System.Text.Json.JsonSerializer.Serialize(newsNeoObject),
-                    expiry:TimeSpan.FromHours(float.Parse(_configuration.GetSection("NewsInRedisPeriodHours").Value)));
-                
-                db.StringSet($"newsExpire:{id}","",
-                    expiry: TimeSpan.FromHours(0.96*float.Parse(_configuration.GetSection("NewsInRedisPeriodHours").Value)));
-                
+                    expiry: TimeSpan.FromHours(float.Parse(_configuration.GetSection("NewsInRedisPeriodHours").Value)));
+
+                db.StringSet($"newsExpire:{id}", "",
+                    expiry: TimeSpan.FromHours(0.96 * float.Parse(_configuration.GetSection("NewsInRedisPeriodHours").Value)));
+
                 _neo4j.Cypher
                     .Match("(n:News)")
                     .Where((News n) => n.Id == id)
@@ -358,8 +565,8 @@ namespace NewsFlowAPI.Controllers
                 return Ok(newsNeoObject);
             }
 
-            News newsObject= JsonConvert.DeserializeObject<News>(news);
-            
+            News newsObject = JsonConvert.DeserializeObject<News>(news);
+
             newsObject.ViewsLastPeriod += 1;
             newsObject.ViewsCount += 1;
             var updatedValue = JsonConvert.SerializeObject(newsObject);
@@ -376,7 +583,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(newsObject);
         }
         //[Authorize]
-        [HttpPut("LikeNews/{id}")] 
+        [HttpPut("LikeNews/{id}")]
         public async Task<ActionResult> LikeNews([FromRoute] long id)
         {
 
@@ -386,77 +593,29 @@ namespace NewsFlowAPI.Controllers
                     .Return(n => n.As<News>())
                     .Limit(1)
                     .ResultsAsync;
-            
+
             var newsNeoObject = newsNeo.First();
 
             _neo4j.Cypher
                    .Match("(n:News)")
                    .Where((News n) => n.Id == id)
                    .Set("n.LikeCount=$views")
-                   .WithParam("views", newsNeoObject.LikeCount+ 1)
+                   .WithParam("views", newsNeoObject.LikeCount + 1)
                    .ExecuteWithoutResultsAsync();
 
             var db = _redis.GetDatabase();
             var news = db.StringGet($"news:{id}").ToString();
             if (!String.IsNullOrEmpty(news))
             {
-            News newsObject = JsonConvert.DeserializeObject<News>(news);
-            newsObject.LikeCount += 1;
-            var updatedValue = JsonConvert.SerializeObject(newsObject);
-            db.StringSet($"news:{id}", updatedValue, expiry: db.KeyTimeToLive($"news:{id}"));
-               
-            }
-
-                return Ok(newsNeoObject.ViewsCount+1);
-
-        }
-
-
-        //[Authorize]
-        [HttpGet("GetTrending")]
-        public async Task<ActionResult> GetTrending()
-        {
-            var db = _redis.GetDatabase();
-            var trending = db.StringGet("trending:news:");
-            if (string.IsNullOrEmpty(trending))
-            {
-                string pattern = "news:*";
-                List<string> keysList = new List<string>();
-                var cursor = default(long);
-                do
-                {
-                    var result = db.Execute("SCAN", cursor.ToString(), "MATCH", pattern, "COUNT", "20");
-                    var innerResult = (RedisResult[])result;
-
-                    cursor = long.Parse((string)innerResult[0]);
-
-                    var keys = (string[])innerResult[1];
-
-                    foreach (var key in keys)
-                    {
-                        keysList.Add(key);
-                    }
-                } while (cursor != 0);
-
-                List<News> newsList = new List<News>();
-
-                foreach (var key in keysList)
-                {
-                    var news = db.StringGet(key).ToString();
-                    var newsObject = JsonConvert.DeserializeObject<News>(news);
-                    newsList.Add(newsObject);
-                }
-
-                newsList.Sort(delegate (News n2, News n1) { return (n1.ViewsLastPeriod + n1.LikeCount / 3 - n2.ViewsLastPeriod - n2.LikeCount / 3); });
-                db.StringSet("trending:news:", JsonConvert.SerializeObject(newsList.Take(10)), expiry: TimeSpan.FromHours(2));
-                return Ok(newsList.Take(10));
+                News newsObject = JsonConvert.DeserializeObject<News>(news);
+                newsObject.LikeCount += 1;
+                var updatedValue = JsonConvert.SerializeObject(newsObject);
+                db.StringSet($"news:{id}", updatedValue, expiry: db.KeyTimeToLive($"news:{id}"));
 
             }
-            else
-            {
-                var trendingList = JsonConvert.DeserializeObject<List<News>>(trending);
-                return Ok(trendingList.Take(10));
-            }
+
+            return Ok(newsNeoObject.ViewsCount + 1);
+
         }
     }
 }

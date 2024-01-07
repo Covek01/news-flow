@@ -42,7 +42,7 @@ namespace NewsFlowAPI.Services
             string keyString=key.ToString();
             if (this.subscribedKeys.Contains(keyString))
             {
-                long id = Int32.Parse(keyString.Substring(11));
+                long id = Int32.Parse(keyString.Substring("shadow:news:".Length));
                 var db = _redis.GetDatabase();
                 var news = db.StringGet($"news:{id}").ToString();
                 News newsObject = JsonConvert.DeserializeObject<News>(news);
@@ -54,11 +54,12 @@ namespace NewsFlowAPI.Services
                     await _neo4j.Cypher
                         .Match("(n:News)")
                         .Where((News n) => n.Id == id)
-                        .Set("n.ViewsLastPeriod=$views, n.LastPeriodTime=$last")
-                        .WithParams(new {views=newsObject.ViewsLastPeriod, last=date})
+                        .Set("n.ViewsCount=$views, n.LastPeriodTime=$last")
+                        .WithParams(new {views=newsObject.ViewsCount, last=date})
                         //.WithParam("views", newsObject.ViewsLastPeriod)
                         .ExecuteWithoutResultsAsync();
                 }
+                await db.KeyDeleteAsync($"news:{id}");
             }
         }
 
