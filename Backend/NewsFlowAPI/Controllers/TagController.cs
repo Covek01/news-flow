@@ -164,10 +164,6 @@ namespace NewsFlowAPI.Controllers
         public async Task<ActionResult> GetTagByName([FromRoute] string name)
         {
             var db = _redis.GetDatabase();
-            db.SetAdd("test", "aaa");
-            db.SetAdd("test", "aab");
-            db.SetAdd("test", "bac");
-            db.SetAdd("test", "bbb");
 
             //var nest = db.SetScanAsync("tags:nodes", "*S*");
             //var nest =

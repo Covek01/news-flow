@@ -6,17 +6,15 @@ using NewsFlowAPI.Models;
 using Neo4jClient;
 using NewsFlowAPI.Services;
 using StackExchange.Redis;
-<<<<<<< HEAD
 using Neo4j.Driver;
 using System.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using Newtonsoft.Json;
-=======
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Newtonsoft.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
->>>>>>> 24abaa14a8dde1616b959fba4f75fef2f086e708
+using System.Security.Cryptography;
 
 namespace NewsFlowAPI.Controllers
 {
@@ -29,27 +27,27 @@ namespace NewsFlowAPI.Controllers
         private readonly IIdentifierService _ids;
         private readonly IConfiguration _configuration;
         private readonly IRedisNewsSubscriber _subscriber;
+        private readonly IQueryCacheService _queryCache;
 
         public NewsController(
             IConnectionMultiplexer redis,
             IBoltGraphClient neo4j,
             IIdentifierService ids,
             IConfiguration config,
-            IRedisNewsSubscriber subscriber
+            IRedisNewsSubscriber subscriber,
+            IQueryCacheService queryCache
             )
         {
             _redis = redis;
             _neo4j = neo4j;
             _ids = ids;
-<<<<<<< HEAD
             _newestNewsKey = "newestnews";
 
             _maxLengthOfNewestNews = 20;
             //this.CheckAndInitializeKeysInRedis();
-=======
             _configuration = config;
             _subscriber = subscriber;
->>>>>>> 24abaa14a8dde1616b959fba4f75fef2f086e708
+            _queryCache = queryCache;
         }
 
        /* public async Task CheckAndInitializeKeysInRedis()
@@ -377,15 +375,88 @@ namespace NewsFlowAPI.Controllers
 
             return Ok(newsObject);
         }
+        //[Authorize]
+        [HttpPut("LikeNews/{id}")] 
+        public async Task<ActionResult> LikeNews([FromRoute] long id)
+        {
+
+            var newsNeo = await _neo4j.Cypher
+                    .Match("(n:News)")
+                    .Where((News n) => n.Id == id)
+                    .Return(n => n.As<News>())
+                    .Limit(1)
+                    .ResultsAsync;
+            
+            var newsNeoObject = newsNeo.First();
+
+            _neo4j.Cypher
+                   .Match("(n:News)")
+                   .Where((News n) => n.Id == id)
+                   .Set("n.LikeCount=$views")
+                   .WithParam("views", newsNeoObject.LikeCount+ 1)
+                   .ExecuteWithoutResultsAsync();
+
+            var db = _redis.GetDatabase();
+            var news = db.StringGet($"news:{id}").ToString();
+            if (!String.IsNullOrEmpty(news))
+            {
+            News newsObject = JsonConvert.DeserializeObject<News>(news);
+            newsObject.LikeCount += 1;
+            var updatedValue = JsonConvert.SerializeObject(newsObject);
+            db.StringSet($"news:{id}", updatedValue, expiry: db.KeyTimeToLive($"news:{id}"));
+               
+            }
+
+                return Ok(newsNeoObject.ViewsCount+1);
+
+        }
+
 
         //[Authorize]
         [HttpGet("GetTrending")]
         public async Task<ActionResult> GetTrending()
         {
+            var db = _redis.GetDatabase();
+            var trending = db.StringGet("trending:news:");
+            if (string.IsNullOrEmpty(trending))
+            {
+                string pattern = "news:*";
+                List<string> keysList = new List<string>();
+                var cursor = default(long);
+                do
+                {
+                    var result = db.Execute("SCAN", cursor.ToString(), "MATCH", pattern, "COUNT", "20");
+                    var innerResult = (RedisResult[])result;
 
+                    cursor = long.Parse((string)innerResult[0]);
 
-            return BadRequest("Not implemented");
+                    var keys = (string[])innerResult[1];
+
+                    foreach (var key in keys)
+                    {
+                        keysList.Add(key);
+                    }
+                } while (cursor != 0);
+
+                List<News> newsList = new List<News>();
+
+                foreach (var key in keysList)
+                {
+                    var news = db.StringGet(key).ToString();
+                    var newsObject = JsonConvert.DeserializeObject<News>(news);
+                    newsList.Add(newsObject);
+                }
+
+                newsList.Sort(delegate (News n2, News n1) { return (n1.ViewsLastPeriod + n1.LikeCount / 3 - n2.ViewsLastPeriod - n2.LikeCount / 3); });
+                db.StringSet("trending:news:", JsonConvert.SerializeObject(newsList.Take(10)), expiry: TimeSpan.FromHours(2));
+                return Ok(newsList.Take(10));
+
+            }
+            else
+            {
+                var trendingList = JsonConvert.DeserializeObject<List<News>>(trending);
+                return Ok(trendingList.Take(10));
+            }
         }
-
     }
 }

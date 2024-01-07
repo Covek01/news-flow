@@ -125,7 +125,6 @@ namespace NewsFlowAPI.Controllers
             return Ok(loc.ToList()[0].Name);
         }
 
-<<<<<<< HEAD
 
         //[Authorize]
         [HttpGet("get")]
@@ -141,8 +140,6 @@ namespace NewsFlowAPI.Controllers
                 .ResultsAsync;
             return Ok(loc.ToList());
         }
-=======
        
->>>>>>> 24abaa14a8dde1616b959fba4f75fef2f086e708
     }
 }
