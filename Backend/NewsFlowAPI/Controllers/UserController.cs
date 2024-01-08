@@ -359,8 +359,9 @@ namespace NewsFlowAPI.Controllers
                     .Where((User u) => u.Id == userId)
                     .AndWhere((Tag t) => t.Id == tagId)
                     .Create("(u)-[ft:FOLLOWS_TAG]->(t)")
-                    .Set("ft.LikeCount=$LikeCount")
-                    .WithParam("LikeCount", 1)
+                    .Set("ft.LikeCount=$LikeCount, ft.InterestCoefficient=$Interest")
+                    //.WithParam("LikeCount", 1)
+                    .WithParams(new {LikeCount=0, Interest=1})
                     .ExecuteWithoutResultsAsync();
             }
 

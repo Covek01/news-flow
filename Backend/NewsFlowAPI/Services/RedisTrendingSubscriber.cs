@@ -1,4 +1,5 @@
-﻿using Neo4jClient;
+﻿using Microsoft.VisualBasic;
+using Neo4jClient;
 using NewsFlowAPI.Models;
 using Newtonsoft.Json;
 using StackExchange.Redis;
@@ -36,57 +37,61 @@ namespace NewsFlowAPI.Services
         }
         private async void HandleExpiration(RedisChannel channel, RedisValue key)
         {
-            var db=_redis.GetDatabase();
-            var idsTrendingListRedis = db.SortedSetRangeByRankAsync("trending:news:").Result.ToList();
-            List<double> trendingList = new List<double>();
-            foreach(var k in idsTrendingListRedis)
+            if (key.ToString() == "trending:news:update")
             {
-                trendingList.Add(Int32.Parse(k));
-            }
-
-            string pattern = "news:*";
-            var keysList = new List<double>();
-            var cursor = default(long);
-
-            do
-            {
-                var result = db.Execute("SCAN", cursor.ToString(), "MATCH", pattern, "COUNT", "20");
-                var innerResult = (RedisResult[])result;
-
-                cursor = long.Parse((string)innerResult[0]);
-                var keys = (string[])innerResult[1];
-
-                foreach (var k in keys)
+                var db = _redis.GetDatabase();
+                var idsTrendingListRedis = db.SortedSetRangeByRankAsync("trending:news:").Result.ToList();
+                List<double> trendingList = new List<double>();
+                foreach (var k in idsTrendingListRedis)
                 {
-                    keysList.Add(Int32.Parse(k.Substring("news:".Length)));
+                    trendingList.Add(Int32.Parse(k));
                 }
-            } while (cursor != 0);
 
-            var firtTimeIds = keysList.Except(trendingList).ToList();
-            foreach (var id in idsTrendingListRedis) {
-                var news = db.StringGet($"news:{id}");
-                if (string.IsNullOrEmpty(news))
+                string pattern = "news:*";
+                var keysList = new List<double>();
+                var cursor = default(long);
+
+                do
                 {
-                    await db.SortedSetRemoveAsync("trending:news:", id);
-                }
-                else
+                    var result = db.Execute("SCAN", cursor.ToString(), "MATCH", pattern, "COUNT", "20");
+                    var innerResult = (RedisResult[])result;
+
+                    cursor = long.Parse((string)innerResult[0]);
+                    var keys = (string[])innerResult[1];
+
+                    foreach (var k in keys)
+                    {
+                        keysList.Add(Int32.Parse(k.Substring("news:".Length)));
+                    }
+                } while (cursor != 0);
+
+                var firtTimeIds = keysList.Except(trendingList).ToList();
+                foreach (var id in idsTrendingListRedis)
                 {
-                    var newsObject = JsonConvert.DeserializeObject<List<News>>(news).First();
-                    //newsObject.ViewsLastPeriod = newsObject.ViewsCount;
-                    //await db.SortedSetIncrementAsync("trending:news:", id, newsObject.ViewsCount-2*Int32.Parse(db.SortedSetScoreAsync("trending:news:",id).Result.ToString()));
-                    await db.SortedSetAddAsync("trending:news:", id, newsObject.ViewsCount - newsObject.ViewsLastPeriod);
-                    newsObject.ViewsLastPeriod = newsObject.ViewsCount;
-                    List<News> newsList=new List<News>();
-                    newsList.Add(newsObject);
-                    db.StringSet($"news:{newsObject.Id}", JsonConvert.SerializeObject(newsList));
+                    var news = db.StringGet($"news:{id}");
+                    if (string.IsNullOrEmpty(news))
+                    {
+                        await db.SortedSetRemoveAsync("trending:news:", id);
+                    }
+                    else
+                    {
+                        var newsObject = JsonConvert.DeserializeObject<List<News>>(news).First();
+                        //newsObject.ViewsLastPeriod = newsObject.ViewsCount;
+                        //await db.SortedSetIncrementAsync("trending:news:", id, newsObject.ViewsCount-2*Int32.Parse(db.SortedSetScoreAsync("trending:news:",id).Result.ToString()));
+                        await db.SortedSetAddAsync("trending:news:", id, newsObject.ViewsCount - newsObject.ViewsLastPeriod);
+                        newsObject.ViewsLastPeriod = newsObject.ViewsCount;
+                        List<News> newsList = new List<News>();
+                        newsList.Add(newsObject);
+                        db.StringSet($"news:{newsObject.Id}", JsonConvert.SerializeObject(newsList));
+                    }
                 }
+                await db.SortedSetRemoveRangeByScoreAsync("trending:news:", Int32.MinValue, 0);
+                foreach (var id in firtTimeIds)
+                {
+                    await db.SortedSetAddAsync("trending:news:", id, 0);
+                }
+                db.StringSet("trending:news:update", "trending_expiration", TimeSpan.FromHours(0.5));
             }
-            await db.SortedSetRemoveRangeByScoreAsync("trending:news:", Int32.MinValue, 0);
-            foreach(var id in firtTimeIds)
-            {
-                await db.SortedSetAddAsync("trending:news:", id, 0);
-            }
-            db.StringSet("trending:news:update", "trending_expiration", TimeSpan.FromHours(0.5));
         }
     }
 }

@@ -587,35 +587,27 @@ namespace NewsFlowAPI.Controllers
         public async Task<ActionResult> LikeNews([FromRoute] long id)
         {
 
-            var newsNeo = await _neo4j.Cypher
+            var db = _redis.GetDatabase();
+            var query = _neo4j.Cypher
                     .Match("(n:News)")
                     .Where((News n) => n.Id == id)
                     .Return(n => n.As<News>())
-                    .Limit(1)
-                    .ResultsAsync;
+                    .Limit(1);
 
-            var newsNeoObject = newsNeo.First();
-
-            _neo4j.Cypher
-                   .Match("(n:News)")
-                   .Where((News n) => n.Id == id)
-                   .Set("n.LikeCount=$views")
-                   .WithParam("views", newsNeoObject.LikeCount + 1)
-                   .ExecuteWithoutResultsAsync();
-
-            var db = _redis.GetDatabase();
-            var news = db.StringGet($"news:{id}").ToString();
-            if (!String.IsNullOrEmpty(news))
+            var news = (await _queryCache.QueryCache(query, $"news:{id}", TimeSpan.FromHours(2)));
+            if (news.Count() == 0)
             {
-                News newsObject = JsonConvert.DeserializeObject<News>(news);
-                newsObject.LikeCount += 1;
-                var updatedValue = JsonConvert.SerializeObject(newsObject);
-                db.StringSet($"news:{id}", updatedValue, expiry: db.KeyTimeToLive($"news:{id}"));
-
+                return NotFound("News not found!");
             }
-
-            return Ok(newsNeoObject.ViewsCount + 1);
-
+            news.First().LikeCount += 1;
+            db.StringSet($"news:{id}", JsonConvert.SerializeObject(news), expiry: db.KeyTimeToLive($"news:{id}"));
+            await _neo4j.Cypher
+                .Match("(n:News)")
+                .Where((News n) => n.Id == id)
+                .Set("n.LikeCount=$likeCount")
+                .WithParam("likeCount", news.First().LikeCount)
+                .ExecuteWithoutResultsAsync();
+            return BadRequest("NOT IMPLEMENTED");
         }
     }
 }
