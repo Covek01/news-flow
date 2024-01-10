@@ -238,7 +238,7 @@ namespace NewsFlowAPI.Controllers
             var claims = HttpContext.User.Claims;
 
             var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-            userId = 1;
+            //userId = 1;
 
             if (userId == -1)
                 return Unauthorized("Error user not signed in");
@@ -252,9 +252,9 @@ namespace NewsFlowAPI.Controllers
             var tagsFromUser =await _neo4j.Cypher
                 .Match("(u:User)-[ft:FOLLOWS_TAG]->(t:Tag)")
                 .Where((User u) => u.Id == userId)
-                .Return(ft => new TagInterestDTO()
+                .Return((ft,t) => new TagInterestDTO()
                 {
-                    TagId=ft.As<FollowsTag>().Tag!.Id,
+                    TagId=t.As<Tag>().Id,
                     LikeCount= ft.As<FollowsTag>().LikeCount,
                     InterestCoefficient=ft.As<FollowsTag>().InterestCoefficient
                 })
@@ -274,8 +274,88 @@ namespace NewsFlowAPI.Controllers
             double maxInterest = double.Parse(_configuration.GetSection("MaxInterest").Value);
                 //maxInterest/2.0 delilac se bira po izboru, sto je veci to se sporije menjaju praceni tagovi korisnika
             double interestQuant = (maxInterest/2.0) / (numLikedAndFollowed + numLikedNotFollowed + numFollowedNotLiked+numLikedAndFollowed);
+            
+            
+            
+            List<TagInterestDTO> tagsLikedNotFollowedObjects = new List<TagInterestDTO>();
+            foreach(var id in tagsLikedNotFollowed)
+            {
+                tagsLikedNotFollowedObjects.Add(new TagInterestDTO()
+                {
+                    TagId = id,
+                    InterestCoefficient = interestQuant,
+                    LikeCount = 1
+                });
+            }
 
-            return BadRequest("Not finished");
+            foreach(var tag in tagsFollowedAndLiked)
+            {
+                tag.InterestCoefficient += interestQuant;
+            }
+            foreach(var tag in tagsFollowedNotLiked)
+            {
+                tag.InterestCoefficient -= interestQuant * (numLikedNotFollowed + numLikedAndFollowed) / numFollowedNotLiked;
+            }
+
+            //ako treba izbaciti elemente vrsi se normalizacija
+            foreach (var tag in tagsFollowedNotLiked)
+            {
+                if (tag.InterestCoefficient < 0)
+                {
+                    await _neo4j.Cypher
+                        .Match("(u:User)-[ft:FOLLOWS_TAG]->(t:Tag)")
+                        .Where((User u) => u.Id == userId)
+                        .AndWhere((Tag t) => t.Id == tag.TagId)
+                        .Delete("ft")
+                        .ExecuteWithoutResultsAsync();
+
+                }
+            }
+            tagsFollowedNotLiked.RemoveAll(tag => tag.InterestCoefficient < 0);
+            double sum = tagsFollowedNotLiked.Sum(t => t.InterestCoefficient) + tagsLikedNotFollowedObjects.Sum(t => t.InterestCoefficient) + tagsFollowedAndLiked.Sum(t => t.InterestCoefficient);
+            if (sum != maxInterest)
+            {
+                numFollowedNotLiked = tagsFollowedNotLiked.Count;
+
+                foreach (var tag in tagsFollowedNotLiked)
+                {
+                    tag.InterestCoefficient = tag.InterestCoefficient * maxInterest / sum;
+                }
+                foreach (var tag in tagsLikedNotFollowedObjects)
+                {
+                    tag.InterestCoefficient = tag.InterestCoefficient * maxInterest / sum;
+                }
+                foreach (var tag in tagsFollowedAndLiked)
+                {
+                    tag.InterestCoefficient = tag.InterestCoefficient * maxInterest / sum;
+                }
+            }
+
+            var followedTags = tagsFollowedNotLiked.Concat(tagsFollowedAndLiked).ToList();
+
+            foreach (var tag in followedTags)
+            {
+                await _neo4j.Cypher
+                    .Match("(u:User)-[ft:FOLLOWS_TAG]->(t:Tag)")
+                    .Where((User u) => u.Id == userId)
+                    .AndWhere((Tag t) => t.Id == tag.TagId)
+                    .Set("ft.LikeCount=$LikeCountt, ft.InterestCoefficient=$Interest")
+                    .WithParams(new { LikeCountt = tag.LikeCount, Interest = tag.InterestCoefficient })
+                    .ExecuteWithoutResultsAsync();
+            }
+
+            foreach (var tag in tagsLikedNotFollowedObjects)
+            {
+                await _neo4j.Cypher
+                    .Match("(u:User)", "(t:Tag)")
+                    .Where((User u) => u.Id == userId)
+                    .AndWhere((Tag t) => t.Id == tag.TagId)
+                    .Create("(u)-[ft:FOLLOWS_TAG]->(t)")
+                    .Set("ft.LikeCount=$LikeCount, ft.InterestCoefficient=$InterestCoefficient")
+                    .WithParams(tag)
+                    .ExecuteWithoutResultsAsync();
+            }
+            return Ok();
 
         }
     }

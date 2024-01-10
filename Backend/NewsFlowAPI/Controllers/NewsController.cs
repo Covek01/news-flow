@@ -609,5 +609,77 @@ namespace NewsFlowAPI.Controllers
                 .ExecuteWithoutResultsAsync();
             return BadRequest("NOT IMPLEMENTED");
         }
+
+        //[Authorize]
+        [HttpGet("GetForYou")]
+        public async Task<ActionResult>GetForYou()
+        {
+            var claims = HttpContext.User.Claims;
+
+            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+            userId = 1;
+
+            if (userId == -1)
+                return Unauthorized("Error user not signed in");
+
+
+            //var res = await _neo4j.Cypher   
+            //    .Match("(u:User)-[ft:FOLLOWS_TAG]->(t:Tag)<-[tg:TAGGED]-(n:News)")
+            //    .Where((User u) => u.Id == userId)
+            //    .Return((n, ft) => new
+            //    {
+            //        News = n.As<News>(),
+            //        Value=ft.As<FollowsTag>().InterestCoefficient
+            //    })
+            //    .ResultsAsync;
+
+                //.Match("(u:User)-[p:PATH*0..5]-(n:News)")
+
+            var newsIdsByTags = await _neo4j.Cypher
+                .Match("(u:User)-[ft:FOLLOWS_TAG]->(t:Tag)<-[tg:TAGGED]-(n:News)")
+                .Where((User u) => u.Id == userId)
+                .With("n, SUM(ft.InterestCoefficient) AS num")
+                .Return((n, num) => new
+                {
+                    Interest = num.As<string>(),
+                    NewsId = n.As<News>().Id
+                })
+                .ResultsAsync;
+
+            var newsIdsByLocations = await _neo4j.Cypher
+              .Match("(u:User)-[fl:FOLLOWS_LOCATION]->(l:Location)<-[lc:LOCATED]-(n:News)")
+              .Where((User u) => u.Id == userId)
+              .With("n, 3*COUNT(*) AS num")
+              .Return((n, num) => new
+              {
+                  Interest = num.As<string>(),
+                  NewsId = n.As<News>().Id
+              })
+              .ResultsAsync;
+
+            var newsIdsByAuthors = await _neo4j.Cypher
+              .Match("(u1:User)-[st:SUBSCRIBED_TO]->(u2:User)<-[w:WRITTEN_BY]-(n:News)")
+              .Where((User u1) => u1.Id == userId)
+              .With("n, 5*COUNT(*) AS num")
+              .Return((n, num) => new
+              {
+                  Interest = num.As<string>(),
+                  NewsId = n.As<News>().Id
+              })
+              .ResultsAsync;
+
+
+    //        var paths = await _neo4j.Cypher
+    //.Match("(u:User)-[:ALL*]-(n:News)")
+    //.Where((User u)=>u.Id==1)
+    //.Return(n => n.As<News>())
+    //.ResultsAsync;
+
+
+            return Ok();
+        }
+
+
+        // metoda you also might like: gde cu da return vesti koje nisu direktno u vezi sa korisnikom ali tako sto ce da nadje vesti koje imaju putanju odredjene duzine od korisnika, npr vesti autora koga prati autor koji nas korisnik prati, (MORALI BI DA DODAMO DA SU SVE VEZE DVOSMERNE, ODNSONO DA DODAMO PO JOS JEDNU VEZU SVAKI PUT)
     }
 }
