@@ -6,27 +6,17 @@ using NewsFlowAPI.Models;
 using Neo4jClient;
 using NewsFlowAPI.Services;
 using StackExchange.Redis;
-<<<<<<< HEAD
 
 using Neo4j.Driver;
 using System.Linq;
 using Newtonsoft.Json;
 
-=======
-using Neo4j.Driver;
 using System.Linq;
-using Newtonsoft.Json;
 using Microsoft.AspNetCore.Authorization;
->>>>>>> 22544e0cd0fce84b41192bde292f68f4a8215b83
-using Microsoft.AspNetCore.Authorization;
-using Newtonsoft.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
-<<<<<<< HEAD
 
-=======
 using System.Security.Cryptography;
->>>>>>> 22544e0cd0fce84b41192bde292f68f4a8215b83
 
 namespace NewsFlowAPI.Controllers
 {
@@ -422,7 +412,7 @@ namespace NewsFlowAPI.Controllers
                    .Where((News n) => n.Id == nId)
                    .Return(n => n.As<News>())
                    .Limit(1);
-                    var news = (await _queryCache.QueryCacheParallerl(query, $"news:{nId}", TimeSpan.FromHours(2)));
+                    var news = (await _queryCache.QueryCacheNoAdd(query, $"news:{nId}"));
                     if (news.Count() == 0)
                     {
                         return BadRequest("Try again later");
@@ -649,7 +639,7 @@ namespace NewsFlowAPI.Controllers
                     .Return(n => n.As<News>())
                     .Limit(1);
 
-            var news = (await _queryCache.QueryCache(query, $"news:{id}", TimeSpan.FromHours(2)));
+            var news = (await _queryCache.QueryCacheNoAdd(query, $"news:{id}"));
             if (news.Count() == 0)
             {
                 return NotFound("News not found!");
@@ -662,7 +652,7 @@ namespace NewsFlowAPI.Controllers
                 .Set("n.LikeCount=$likeCount")
                 .WithParam("likeCount", news.First().LikeCount)
                 .ExecuteWithoutResultsAsync();
-            return BadRequest("NOT IMPLEMENTED");
+            return Ok();
         }
 
         //[Authorize]
@@ -672,7 +662,7 @@ namespace NewsFlowAPI.Controllers
             var claims = HttpContext.User.Claims;
 
             var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-            userId = 1;
+            userId = 6;
 
             if (userId == -1)
                 return Unauthorized("Error user not signed in");
@@ -688,53 +678,119 @@ namespace NewsFlowAPI.Controllers
             //    })
             //    .ResultsAsync;
 
-                //.Match("(u:User)-[p:PATH*0..5]-(n:News)")
+            //.Match("(u:User)-[p:PATH*0..5]-(n:News)")
+
+            Dictionary<double, double> newsIdHash = new Dictionary<double, double>();
 
             var newsIdsByTags = await _neo4j.Cypher
                 .Match("(u:User)-[ft:FOLLOWS_TAG]->(t:Tag)<-[tg:TAGGED]-(n:News)")
                 .Where((User u) => u.Id == userId)
+                .AndWhere("NOT (u)-[:SEEN]->(n)")
                 .With("n, SUM(ft.InterestCoefficient) AS num")
+                //.OptionalMatch("(u)-[:SEEN]->(n)")
+                //.Where("NOT EXISTS((u)-[:SEEN]->(n))")
                 .Return((n, num) => new
                 {
-                    Interest = num.As<string>(),
+                    Interest = num.As<double>(),
                     NewsId = n.As<News>().Id
                 })
                 .ResultsAsync;
 
+            newsIdsByTags.ToList().ForEach(n => newsIdHash.Add(n.NewsId, n.Interest));
+
             var newsIdsByLocations = await _neo4j.Cypher
               .Match("(u:User)-[fl:FOLLOWS_LOCATION]->(l:Location)<-[lc:LOCATED]-(n:News)")
               .Where((User u) => u.Id == userId)
-              .With("n, 3*COUNT(*) AS num")
+                .AndWhere("NOT (u)-[:SEEN]->(n)")
+              .With("n, 4*COUNT(*) AS num")
+              //.OptionalMatch("(u)-[:SEEN]->(n)")
+                //.Where("NOT EXISTS((u)-[:SEEN]->(n))")
               .Return((n, num) => new
               {
-                  Interest = num.As<string>(),
+                  Interest = num.As<double>(),
                   NewsId = n.As<News>().Id
               })
               .ResultsAsync;
+
+            newsIdsByLocations.ToList().ForEach(n =>
+            {
+                double oldValue=0;
+                newsIdHash.TryGetValue(n.NewsId, out oldValue);
+                newsIdHash[n.NewsId]= oldValue + n.Interest;
+            });
 
             var newsIdsByAuthors = await _neo4j.Cypher
-              .Match("(u1:User)-[st:SUBSCRIBED_TO]->(u2:User)<-[w:WRITTEN_BY]-(n:News)")
+              .Match("(u1:User)-[st:SUBSCRIBED_TO]->(u2:User)<-[w:WRITTEN]-(n:News)")
               .Where((User u1) => u1.Id == userId)
-              .With("n, 5*COUNT(*) AS num")
+                .AndWhere("NOT (u1)-[:SEEN]->(n)")
+              .With("n, 3*COUNT(*) AS num")
+              //.OptionalMatch("(u1)-[:SEEN]->(n)")
+                //.Where("NOT EXISTS((u1)-[:SEEN]->(n))")
               .Return((n, num) => new
               {
-                  Interest = num.As<string>(),
+                  Interest = num.As<double>(),
                   NewsId = n.As<News>().Id
               })
               .ResultsAsync;
+            newsIdsByAuthors.ToList().ForEach(n =>
+            {
+                double oldValue = 0;
+                newsIdHash.TryGetValue(n.NewsId, out oldValue);
+                newsIdHash[n.NewsId]=oldValue + n.Interest;
+            });
 
 
-    //        var paths = await _neo4j.Cypher
-    //.Match("(u:User)-[:ALL*]-(n:News)")
-    //.Where((User u)=>u.Id==1)
-    //.Return(n => n.As<News>())
-    //.ResultsAsync;
+            var mightAlsoLike = await _neo4j.Cypher
+            .Match("(u:User)-[*3..5]-(n:News)")
+            .Where((User u) => u.Id == userId)
+            .AndWhere("shortestPath((u)-[*]-(n)) IS NOT NULL AND length(shortestPath((u)-[*]-(n))) >= 3 AND length(shortestPath((u)-[*]-(n))) <= 5")
+            .ReturnDistinct(n => n.As<News>().Id)
+            .ResultsAsync;
 
+            mightAlsoLike.ToList().ForEach(n =>
+            {
+                double oldValue = 0;
+                newsIdHash.TryGetValue(n, out oldValue);
+                newsIdHash[n] = oldValue + 1;
+            });
+            var db = _redis.GetDatabase();
 
-            return Ok();
+            List<News> forYou = new List<News>();
+            foreach(var enrty in newsIdHash)
+            {
+                var query = _neo4j.Cypher
+                    .Match("(n:News)")
+                    .Where((News n) => n.Id == enrty.Key)
+                    .Return(n => n.As<News>())
+                    .Limit(1);
+            var news = (await _queryCache.QueryCacheNoAdd(query, $"news:{enrty.Key}"));
+                forYou.Add(news.First());
+            }
+
+            return Ok(forYou);
         }
 
 
-        // metoda you also might like: gde cu da return vesti koje nisu direktno u vezi sa korisnikom ali tako sto ce da nadje vesti koje imaju putanju odredjene duzine od korisnika, npr vesti autora koga prati autor koji nas korisnik prati, (MORALI BI DA DODAMO DA SU SVE VEZE DVOSMERNE, ODNSONO DA DODAMO PO JOS JEDNU VEZU SVAKI PUT)
+        //[Authorize]
+        [HttpPost("SeenNews")]
+        public async Task<ActionResult> SeenNews([FromQuery] double userId, [FromQuery] double newsId)
+        {
+            var curDate = DateTime.Now;
+            try
+            {
+                await _neo4j.Cypher
+                            .Match("(u:User)", "(n:News)")
+                            .Where((User u) => u.Id == userId)
+                            .AndWhere((News n) => n.Id == newsId)
+                            .Create("(u)-[s:SEEN]->(n)")
+                            .Set("s.DateSeen=$dateSeen")
+                            .WithParam("dateSeen", curDate)
+                            .ExecuteWithoutResultsAsync();
+            }catch(Exception e)
+            {
+                return BadRequest("Something went wrong, try again later");
+            }
+            return Ok();
+        }
     }
 }

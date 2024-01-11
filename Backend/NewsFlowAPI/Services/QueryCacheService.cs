@@ -70,7 +70,22 @@ namespace NewsFlowAPI.Services
 
             return value;
         }
+        public async Task<IEnumerable<T>> QueryCacheNoAdd<T>(ICypherFluentQuery<T> neo4jQuery, string redisKey){
+            var db = _redis.GetDatabase();
 
-        
+            var redisValue = (await db.StringGetAsync(redisKey)).ToString();
+
+            if (!string.IsNullOrEmpty(redisValue))
+            {
+                return JsonConvert.DeserializeObject<List<T>>(redisValue);
+            }
+
+            var result = await neo4jQuery.ResultsAsync;
+
+            return result;
+        }
+
+
+
     }
 }
