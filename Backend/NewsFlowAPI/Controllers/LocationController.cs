@@ -125,6 +125,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(loc.ToList()[0].Name);
         }
 
+
         //[Authorize]
         [HttpGet("get")]
         public async Task<ActionResult> GetAllLocations()
@@ -139,6 +140,5 @@ namespace NewsFlowAPI.Controllers
                 .ResultsAsync;
             return Ok(loc.ToList());
         }
-
     }
 }

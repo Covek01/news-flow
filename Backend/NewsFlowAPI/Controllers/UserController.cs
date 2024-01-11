@@ -359,8 +359,9 @@ namespace NewsFlowAPI.Controllers
                     .Where((User u) => u.Id == userId)
                     .AndWhere((Tag t) => t.Id == tagId)
                     .Create("(u)-[ft:FOLLOWS_TAG]->(t)")
-                    .Set("ft.ViewCount=$ViewCount, ft.LikeCount=$LikeCount, ft.InterestCoefficient=$InterestCoefficient")
-                    .WithParams(new {ViewCount=1, LikeCount=0, InterestCoefficient =1})
+                    .Set("ft.LikeCount=$LikeCount, ft.InterestCoefficient=$Interest")
+                    //.WithParam("LikeCount", 1)
+                    .WithParams(new {LikeCount=0, Interest=1})
                     .ExecuteWithoutResultsAsync();
             }
 
@@ -397,7 +398,7 @@ namespace NewsFlowAPI.Controllers
             var claims = HttpContext.User.Claims;
 
             var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-            //userId = 1;
+            userId = 1;///I OVO OBABVEZNO DA SE COMMENT AAAAAA
 
             if (userId == -1)
                 return Unauthorized("Error user not signed in");
@@ -456,7 +457,7 @@ namespace NewsFlowAPI.Controllers
             var claims=HttpContext.User.Claims;
 
             var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-            //userId = 1;
+            userId = 1;/////OVO OBAVEZNO DA SE COMMENT NAKON TESTIRANJE 
 
             if (userId==-1)
                 return Unauthorized("Error user not signed in");
