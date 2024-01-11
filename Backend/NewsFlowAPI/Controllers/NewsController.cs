@@ -6,17 +6,16 @@ using NewsFlowAPI.Models;
 using Neo4jClient;
 using NewsFlowAPI.Services;
 using StackExchange.Redis;
-<<<<<<< HEAD
+
 using Neo4j.Driver;
 using System.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using Newtonsoft.Json;
-=======
+
 using Microsoft.AspNetCore.Authorization;
 using Newtonsoft.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
->>>>>>> 24abaa14a8dde1616b959fba4f75fef2f086e708
+
 
 namespace NewsFlowAPI.Controllers
 {
@@ -24,6 +23,7 @@ namespace NewsFlowAPI.Controllers
     {
         private readonly string _newestNewsKey;
         private readonly int _maxLengthOfNewestNews;
+        private readonly string _channelForNewestNews;
         private readonly IConnectionMultiplexer _redis;
         private readonly IBoltGraphClient _neo4j;
         private readonly IIdentifierService _ids;
@@ -41,15 +41,11 @@ namespace NewsFlowAPI.Controllers
             _redis = redis;
             _neo4j = neo4j;
             _ids = ids;
-<<<<<<< HEAD
             _newestNewsKey = "newestnews";
-
             _maxLengthOfNewestNews = 20;
-            //this.CheckAndInitializeKeysInRedis();
-=======
             _configuration = config;
             _subscriber = subscriber;
->>>>>>> 24abaa14a8dde1616b959fba4f75fef2f086e708
+            _channelForNewestNews = "newest:channel";
         }
 
        /* public async Task CheckAndInitializeKeysInRedis()
@@ -138,13 +134,15 @@ namespace NewsFlowAPI.Controllers
                 await _neo4j.Cypher
                 .Match("(n:News), (u:User)")
                 .Where((News n, User u) => n.Id == news.Id && data.authorId == u.Id)
-                .Create("(n)-[:WRITTEN_BY]->(u)")
+                .Create("(n)-[:WRITTEN]->(u)")
+                .Create("(n)<-[:WRITTEN]-(u)")
                 .ExecuteWithoutResultsAsync();
 
                 await _neo4j.Cypher
                     .Match("(n:News), (l:Location)")
                     .Where((News n, Location l) => n.Id == news.Id && l.Id == data.locationId)
                     .Create("(n)-[:LOCATED]->(l)")
+                    .Create("(n)<-[:LOCATED]-(l)")
                     .ExecuteWithoutResultsAsync();
 
 
@@ -169,7 +167,11 @@ namespace NewsFlowAPI.Controllers
                     PostTime = news.PostTime
                 };
 
-                db.ListLeftPush(_newestNewsKey, JsonConvert.SerializeObject(newsForRedis));
+                var newsForRedisJson = JsonConvert.SerializeObject(newsForRedis);
+
+                db.ListLeftPush(_newestNewsKey, newsForRedisJson);
+
+                await db.PublishAsync(_channelForNewestNews, newsForRedisJson);
 
                 return Ok(news);
             }
@@ -259,7 +261,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
-        [HttpGet("news/geteNewsById/{authorName}")]
+        [HttpGet("news/getNewsById/{authorName}")]
         public async Task<ActionResult> GetNewsByAuthor([FromRoute] string authorName)
         {
             try
@@ -270,6 +272,40 @@ namespace NewsFlowAPI.Controllers
                     .Return(n => n.As<News>())
                     .ResultsAsync)
                     .ToList();
+
+                return Ok(news.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e);
+            }
+        }
+
+        [HttpGet("news/getNewestNews")]
+        public async Task<ActionResult> GetNewestNews()
+        {
+            try
+            {
+                var db = _redis.GetDatabase();
+
+                var news = await db.ListRangeAsync(_newestNewsKey);
+                var newsDeserialized = new List<News>();
+
+                foreach (var n in news)
+                {
+                    newsDeserialized.Add(JsonConvert.DeserializeObject<News>(n));
+                }
+
+                var newsReturn = newsDeserialized.Select(p =>
+                new NewsReturnDTO
+                {
+                    Title = p.Title,
+                    Text = p.Text,
+                    Summary = p.Summary,
+                    ImageUrl = p.ImageUrl,
+                    authorId = p.AuthorId,
+                    locationId = p.LocationId
+                });
 
                 return Ok(news.ToList());
             }
@@ -305,7 +341,7 @@ namespace NewsFlowAPI.Controllers
                     locationId = p.LocationId
                 });
 
-                return Ok(news.ToList());
+                return Ok(newsReturn.ToList());
             }
             catch (Exception e)
             {

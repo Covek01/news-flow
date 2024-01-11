@@ -19,6 +19,7 @@
     "create-react-app": "^5.0.1",
     "react-router-dom": "^6.21.1",
     "react-scripts": "^5.0.1",
+    "redis": "^4.6.12",
     "styled-components": "^6.1.6"
   }
 }
