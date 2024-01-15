@@ -56,14 +56,14 @@ const Newest: React.FC = () => {
     
      const initalizeNews = async () => {
         let news: object[]
-        try{
-            news = await newsService.GetNewestNews()
-        }
-        catch(error: any){
-            console.log('unexpected error in getting newest news: ', error)
-            news = []
-        }
-
+        // try{
+        //     news = await newsService.GetNewestNews()
+        // }
+        // catch(error: any){
+        //     console.log('unexpected error in getting newest news: ', error)
+        //     news = []
+        // }
+        news=newsData
         const newsObject: News[] = news.map((x) => {
             return new News((x as any).title,
                     (x as any).url,

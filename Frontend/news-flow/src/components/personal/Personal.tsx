@@ -6,15 +6,17 @@ import Tag from "../../Types/Tag"
 import newsService from "../../services/NewsService"
 import tagService from "../../services/TagService";
 import {Autocomplete, TextField} from "@mui/material"
+import { api } from "../../services/Service";
 
 const Personal: React.FC = () => {
     const [newsToShow, setNewsToShow] = React.useState<News[]>([])
     const [myTags, setMyTags] = React.useState<Tag[]>([])
     const initalizeNews = async () => {
-        let news: object[]
+        let news:News[];
 
         try{
-            news = await newsService.GetForYou()
+            news = await api
+            .get("/GetForYou");
         }
         catch(error: any){
             console.log('unexpected error in getting newest news: ', error)
@@ -36,10 +38,10 @@ const Personal: React.FC = () => {
 
 
     const getMyTags = async (): Promise<Tag[]> => {
-        let tags: object[]
+        let tags: Tag[]
 
         try{
-            tags = await tagService.GetMyTags()
+            tags = await api.get("/tag/getAllTags");
         }
         catch(error: any){
             console.log('unexpected error in getting personal tags: ', error)

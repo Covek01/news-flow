@@ -3,6 +3,7 @@ import * as React from 'react';
 import NewsContainer from "../homepage/NewsContainer";
 import News from "../../Types/News"
 import newsService from "../../services/NewsService"
+import { api } from "../../services/Service";
 
 const Trending: React.FC = () => {
     const [newsToShow, setNewsToShow] = React.useState<News[]>([])
@@ -11,7 +12,7 @@ const Trending: React.FC = () => {
         let news: object[]
 
         try{
-            news = await newsService.GetForYou()
+            news = await api.get("/GetForYou");
         }
         catch(error: any){
             console.log('unexpected error in getting newest news: ', error)
