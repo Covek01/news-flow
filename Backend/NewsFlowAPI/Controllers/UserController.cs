@@ -457,7 +457,7 @@ namespace NewsFlowAPI.Controllers
             var claims=HttpContext.User.Claims;
 
             var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-            userId = 1;/////OVO OBAVEZNO DA SE COMMENT NAKON TESTIRANJE 
+            userId = 7;/////OVO OBAVEZNO DA SE COMMENT NAKON TESTIRANJE 
 
             if (userId==-1)
                 return Unauthorized("Error user not signed in");

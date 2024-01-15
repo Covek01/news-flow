@@ -7,5 +7,7 @@ namespace NewsFlowAPI.Services
         Task<IEnumerable<T>> QueryCache<T>(ICypherFluentQuery<T> neo4jQuery, string redisKey, TimeSpan? expiry = null);
 
         Task<IEnumerable<T>> QueryCacheParallerl<T>(ICypherFluentQuery<T> neo4jQuery, string redisKey, TimeSpan? expiry = null);
+
+        Task<IEnumerable<T>> QueryCacheNoAdd<T>(ICypherFluentQuery<T> neo4jQuery, string redisKey);
     }
 }
