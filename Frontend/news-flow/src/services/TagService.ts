@@ -1,17 +1,14 @@
 import axios from "axios"
-import Service from "./Service"
+import {api} from "./Service"
 
-class TagService extends Service {
-    constructor(){
-        super()
+class TagService  {
+
+    public GetAllTags(){
+        return api.get("/tag/getAllTags")
     }
 
-    public GetAllTags(): object[]{
-        return this.axiosInstance.get("/tag/getAllTags")
-    }
-
-    public GetMyTags(): object[]{
-        return this.axiosInstance.get("/tag/getAllTags")
+    public GetMyTags(){
+        return api.get("/tag/getAllTags")
     }
 }
 
