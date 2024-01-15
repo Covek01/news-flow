@@ -9,10 +9,12 @@ const Bar: React.FC = () => {
     let navigate = useNavigate()
     const handleClickTrending = () => {
         // Rutiranje na trending deo
+        navigate("/trending")
     }
 
     const handleClickPersonal = () => {
         // Rutiranje na preference za korisnika
+        navigate("/personal")
     }
 
     const handleClickNewest = () => {

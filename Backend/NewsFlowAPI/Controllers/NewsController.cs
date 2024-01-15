@@ -6,27 +6,23 @@ using NewsFlowAPI.Models;
 using Neo4jClient;
 using NewsFlowAPI.Services;
 using StackExchange.Redis;
-<<<<<<< HEAD
 
 using Neo4j.Driver;
 using System.Linq;
 using Newtonsoft.Json;
 
-=======
 using Neo4j.Driver;
 using System.Linq;
 using Newtonsoft.Json;
 using Microsoft.AspNetCore.Authorization;
->>>>>>> 22544e0cd0fce84b41192bde292f68f4a8215b83
+
 using Microsoft.AspNetCore.Authorization;
 using Newtonsoft.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
-<<<<<<< HEAD
 
-=======
 using System.Security.Cryptography;
->>>>>>> 22544e0cd0fce84b41192bde292f68f4a8215b83
+
 
 namespace NewsFlowAPI.Controllers
 {
@@ -147,6 +143,7 @@ namespace NewsFlowAPI.Controllers
                 await _neo4j.Cypher
                  .Match("(n:News), (t:Tag)")
                  .Where("any(tagId IN $tagsIds WHERE tagId = t.Id)")
+                 .AndWhere((News n) => n.Id == news.Id)
                  .WithParam("tagsIds", data.tagsIds)
                  .Create("(n)-[:TAGGED]->(t)")
                  .ExecuteWithoutResultsAsync();
@@ -324,7 +321,9 @@ namespace NewsFlowAPI.Controllers
                     Summary = p.Summary,
                     ImageUrl = p.ImageUrl,
                     authorId = p.AuthorId,
-                    locationId = p.LocationId
+                    locationId = p.LocationId,
+                    ViewsCount = p.ViewsCount,
+                    LikeCount = p.LikeCount
                 });
 
                 return Ok(news.ToList());

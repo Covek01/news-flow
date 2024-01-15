@@ -1,0 +1,22 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@emotion/react": "^11.11.3",
+    "@emotion/styled": "^11.11.0",
+    "@mui/material": "^5.15.2",
+    "@mui/styled-engine-sc": "^6.0.0-alpha.10",
+    "create-react-app": "^5.0.1",
+    "react-router-dom": "^6.21.1",
+    "react-scripts": "^5.0.1",
+    "redis": "^4.6.12",
+    "styled-components": "^6.1.6"
+  }
+}

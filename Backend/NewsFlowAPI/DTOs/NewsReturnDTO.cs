@@ -10,6 +10,8 @@ namespace NewsFlowAPI.DTOs
         public List<long> tagsIds { get; set; } = new List<long>();
         public long authorId { get; set; }
         public long? locationId { get; set; }
+        public long ViewsCount { get; set; }
+        public long LikeCount { get; set; }
         public DateTime PostTime { get; set; }
         
     }
