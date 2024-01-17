@@ -67,7 +67,7 @@ const Bar: React.FC = () => {
                               "background=311b92",
                               "background=fdd835"
                             )
-                          : "https://ui-avatars.com/api/?background=311b92&color=fff&name=B+W&rounded=true"
+                          : "https://ui-avatars.com/api/?background=311b92&color=fff&name=N+F&rounded=true"
                       }
                     />
                 </Box>
