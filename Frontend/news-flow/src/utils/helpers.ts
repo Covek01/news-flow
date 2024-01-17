@@ -1,4 +1,4 @@
-import User from "../Types/User";
+import User from "../models/User";
 
 interface Session {
     id: string;

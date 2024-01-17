@@ -1,7 +1,7 @@
 import Bar from "../bar/Bar"
 import * as React from 'react';
 import NewsContainer from "../homepage/NewsContainer";
-import News from "../../Types/News"
+import News from "../../models/News"
 //import { RedisClientType, createClient } from "redis"
 import { hasOnlyExpressionInitializer } from "typescript";
 import newsService from "../../services/NewsService"
@@ -55,24 +55,28 @@ const Newest: React.FC = () => {
 
     
      const initalizeNews = async () => {
-        let news: object[]
-        // try{
-        //     news = await newsService.GetNewestNews()
-        // }
-        // catch(error: any){
-        //     console.log('unexpected error in getting newest news: ', error)
-        //     news = []
-        // }
-        news=newsData
+        let news: News[]
+        try{
+            news = await newsService.GetNewestNews()
+        }
+        catch(error: any){
+            console.log('unexpected error in getting newest news: ', error)
+            news = []
+        }
+    
         const newsObject: News[] = news.map((x) => {
-            return new News((x as any).title,
+            return new News(
+                    (x as any).id,
+                    (x as any).title,
                     (x as any).url,
                     (x as any).authorName,
                     (x as any).summary,
                     (x as any).text,
                     (x as any).authorId,
                     (x as any).viewsCount,
-                    (x as any).likesCount)
+                    (x as any).likeCount,
+                    (x as any).postTime
+                    )
         })
 
         setNewsToShow(newsObject)

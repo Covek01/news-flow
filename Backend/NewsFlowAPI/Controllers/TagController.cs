@@ -232,7 +232,7 @@ namespace NewsFlowAPI.Controllers
         }
 
         //[Authorize]
-        [HttpPut("LikeTagFronNews/{newsId}")]
+        [HttpPut("LikeTagFromNews/{newsId}")]
         public async Task<ActionResult> LikeTagsFromNews([FromRoute] long newsId)
         {
             var claims = HttpContext.User.Claims;

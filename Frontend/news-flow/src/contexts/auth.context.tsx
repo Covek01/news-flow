@@ -6,7 +6,7 @@ import {
     useState,
   } from "react";
   import { api } from "../services/Service"
-  import User from "../Types/User";
+  import User from "../models/User";
   import {
     lsGetSession,
     lsGetUser,

@@ -1,7 +1,7 @@
 import Bar from "../bar/Bar"
 import * as React from 'react';
 import NewsContainer from "./NewsContainer";
-import News from "../../Types/News"
+import News from "../../models/News"
 
 
 interface HomepageProps{

@@ -10,8 +10,8 @@ import {
 } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import User from "../../Types/User";
-import UserRegister from "../../Types/UserRegister";
+import User from "../../models/User";
+import UserRegister from "../../models/UserRegister";
 import { api } from "../../services/Service";
 import { useCallback } from "react";
 

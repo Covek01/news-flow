@@ -18,6 +18,7 @@ using Newtonsoft.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using System.Security.Cryptography;
+using Microsoft.Extensions.Configuration.UserSecrets;
 
 
 namespace NewsFlowAPI.Controllers
@@ -92,7 +93,9 @@ namespace NewsFlowAPI.Controllers
                     Text = data.Text,
                     ImageUrl = data.ImageUrl,
                     AuthorId = data.authorId,
-                    LocationId = data.locationId
+                    LocationId = data.locationId,
+                    LikeCount = 0,
+                    ViewsCount = 0
                 };
 
                 news.PostTime = DateTime.Now;
@@ -137,7 +140,7 @@ namespace NewsFlowAPI.Controllers
 
                 //tagovi
                 await _neo4j.Cypher
-                 .AndWhere((News n) => n.Id == news.Id)
+                 .Match("(n:News), (t:Tag)")
                  .Where("any(tagId IN $tagsIds WHERE tagId = t.Id)")
                  .AndWhere((News n) => n.Id == news.Id)
                  .WithParam("tagsIds", data.tagsIds)
@@ -177,6 +180,8 @@ namespace NewsFlowAPI.Controllers
                     ImageUrl = news.ImageUrl,
                     authorId = news.AuthorId,
                     locationId = news.LocationId,
+                    likeCount = news.LikeCount,
+                    viewsCount = news.ViewsCount,
                     PostTime = news.PostTime
                 };
 
@@ -274,7 +279,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
-        [HttpGet("news/getNewsById/{authorName}")]
+        [HttpGet("news/getNewsByAuthor/{authorName}")]
         public async Task<ActionResult> GetNewsByAuthor([FromRoute] string authorName)
         {
             try
@@ -294,6 +299,58 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
+        [HttpGet("news/getNewsById/{id}")]
+        public async Task<ActionResult> GetNewsById([FromRoute] long id)
+        {
+            try
+            {
+                var p = (await _neo4j.Cypher
+                    .Match("(n:News)")
+                    .Where((News n) => n.Id == id)
+                    .Return(n => n.As<News>())
+                    .ResultsAsync)
+                    .FirstOrDefault();
+
+
+                var author = (await _neo4j.Cypher
+                            .Match("(u:User)")
+                            .Where((User u) => u.Id == p.AuthorId)
+                            .Return(u => u.As<User>().Name)
+                            .ResultsAsync).FirstOrDefault();
+                    
+                var tagsIds = (await _neo4j.Cypher
+                    .Match("(n:News)-[:TAGGED]->(t:Tag)")
+                    .Where((News n) => n.Id == id)
+                    .Return(t => t.As<Tag>().Id)
+                    .ResultsAsync)
+                    .ToList();
+                var newsReturnResult = new NewsReturnDTO
+                {
+                    Id = p.Id,
+                    Title = p.Title,
+                    Text = p.Text,
+                    Summary = p.Summary,
+                    ImageUrl = p.ImageUrl,
+                    locationId = p.LocationId,
+                    ViewsCount = p.ViewsCount,
+                    LikeCount = p.LikeCount,
+                    authorId = p.AuthorId,
+                    PostTime = p.PostTime,
+                    authorName = author,
+                    tagsIds = new List<long>(tagsIds)
+                };
+
+
+                return Ok(newsReturnResult);
+
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+
         [HttpGet("news/getNewestNews")]
         public async Task<ActionResult> GetNewestNews()
         {
@@ -309,22 +366,61 @@ namespace NewsFlowAPI.Controllers
                     newsDeserialized.Add(JsonConvert.DeserializeObject<News>(n));
                 }
 
-                var newsReturn = newsDeserialized.Select(p =>
-                new NewsReturnDTO
+                var newsReturnTasks = newsDeserialized.Select(async p =>
                 {
-                    Title = p.Title,
-                    Text = p.Text,
-                    Summary = p.Summary,
-                    locationId = p.LocationId,
-                    ViewsCount = p.ViewsCount,
-                    LikeCount = p.LikeCount
+
+                    var author = (await _neo4j.Cypher
+                                    .Match("(u:User)")
+                                    .Where((User u) => u.Id == p.AuthorId)
+                                    .Return(u => u.As<User>().Name)
+                                    .ResultsAsync).FirstOrDefault();
+
+                    return new NewsReturnDTO
+                    {
+                        Id = p.Id,
+                        Title = p.Title,
+                        Text = p.Text,
+                        Summary = p.Summary,
+                        ImageUrl = p.ImageUrl,
+                        locationId = p.LocationId,
+                        ViewsCount = p.ViewsCount,
+                        LikeCount = p.LikeCount,
+                        authorId = p.AuthorId,
+                        PostTime = p.PostTime,
+                        authorName = author
+                    };
                 });
 
-                return Ok(news.ToList());
+                var newsReturnResults = await Task.WhenAll(newsReturnTasks);
+
+                return Ok(newsReturnResults.ToList());
             }
             catch (Exception e)
             {
-                return StatusCode(500, e);
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpGet("news/isNewsLikedByUser/{userId}/{newsId}")]
+        public async Task<ActionResult> IsNewsLikedByUser([FromRoute] long userId, [FromRoute] long newsId)
+        {
+            try
+            {
+                var listCons = (await _neo4j.Cypher
+                                  .Match("(u:User)-[:LIKES]->(n:News)")
+                                  .Where((User u, News n) => u.Id == userId && n.Id == newsId)
+                                  .Return((u, n) => new
+                                  {
+                                      userId = u.As<User>().Id,
+                                      newsId = n.As<News>().Id
+                                  }).ResultsAsync).ToList();
+
+                bool isLiked = listCons.Any();
+                return Ok(isLiked);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
             }
         }
 
@@ -358,7 +454,7 @@ namespace NewsFlowAPI.Controllers
             }
             catch (Exception e)
             {
-                return StatusCode(500, e);
+                return StatusCode(500, e.Message);
             }
 
         }
@@ -635,28 +731,149 @@ namespace NewsFlowAPI.Controllers
         [HttpPut("LikeNews/{id}")]
         public async Task<ActionResult> LikeNews([FromRoute] long id)
         {
+            try
+            {
+                var db = _redis.GetDatabase();
+                var query = _neo4j.Cypher
+                        .Match("(n:News)")
+                        .Where((News n) => n.Id == id)
+                        .Return(n => n.As<News>())
+                        .Limit(1);
 
-            var db = _redis.GetDatabase();
-            var query = _neo4j.Cypher
+                var news = (await _queryCache.QueryCacheNoAdd(query, $"news:{id}"));
+                if (news.Count() == 0)
+                {
+                    return NotFound("News not found!");
+                }
+                news.First().LikeCount += 1;
+                db.StringSet($"news:{id}", JsonConvert.SerializeObject(news), expiry: db.KeyTimeToLive($"news:{id}"));
+                await _neo4j.Cypher
                     .Match("(n:News)")
                     .Where((News n) => n.Id == id)
+                    .Set("n.LikeCount=$likeCount")
+                    .WithParam("likeCount", news.First().LikeCount)
+                    .ExecuteWithoutResultsAsync();
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+
+        }
+
+        //[Authorize]
+        [HttpPut("DislikeNews/{userId}/{newsId}")]
+        public async Task<ActionResult> DislikeNews([FromRoute] long userId, [FromRoute] long newsId)
+        {
+            try
+            {
+                var db = _redis.GetDatabase();
+                await _neo4j.Cypher
+                    .Match("(n:News)<-[r:LIKES]-(u:User)")
+                    .Where((News n, User u) => n.Id == newsId && u.Id == userId)
+                    .Delete("r")
+                    .ExecuteWithoutResultsAsync();
+
+                var queryNews = _neo4j.Cypher
+                    .Match("(n:News)")
+                    .Where((News n) => n.Id == newsId)
                     .Return(n => n.As<News>())
                     .Limit(1);
 
-            var news = (await _queryCache.QueryCacheNoAdd(query, $"news:{id}"));
-            if (news.Count() == 0)
-            {
-                return NotFound("News not found!");
+                var news = (await _queryCache.QueryCacheNoAdd(queryNews, $"news:{newsId}"));
+                if (news.Count() == 0)
+                {
+                    return NotFound("News not found!");
+                }
+
+                news.First().LikeCount -= 1;
+                //if (Convert.ToInt64((db.KeyTimeToLive($"news:{newsId}"))) > 0)
+                //{
+
+                db.StringSet($"news:{newsId}", JsonConvert.SerializeObject(news), expiry: db.KeyTimeToLive($"news:{newsId}"));
+                //}
+
+                await _neo4j.Cypher
+                   .Match("(n:News)")
+                   .Where((News n) => n.Id == newsId)
+                   .Set("n.LikeCount=$likeCount")
+                   .WithParam("likeCount", news.First().LikeCount)
+                   .ExecuteWithoutResultsAsync();
+
+                return Ok();
             }
-            news.First().LikeCount += 1;
-            db.StringSet($"news:{id}", JsonConvert.SerializeObject(news), expiry: db.KeyTimeToLive($"news:{id}"));
-            await _neo4j.Cypher
-                .Match("(n:News)")
-                .Where((News n) => n.Id == id)
-                .Set("n.LikeCount=$likeCount")
-                .WithParam("likeCount", news.First().LikeCount)
-                .ExecuteWithoutResultsAsync();
-            return Ok();
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+            
+
+        }
+
+        //[Authorize]
+        [HttpPut("LikeNewsAndSetLikedRelation/{userId}/{newsId}")]
+        public async Task<ActionResult> LikeNewsAndSetLikedRelation([FromRoute] long userId, [FromRoute] long newsId)
+        {
+
+            try
+            {
+                var db = _redis.GetDatabase();
+
+                var existsList = (await _neo4j.Cypher
+                    .Match("(n:News)<-[:LIKES]-(u:User)")
+                    .Where((News n, User u) => n.Id == newsId && u.Id == userId)
+                    .Return((n, u) => new
+                    {
+                        newsId = n.As<News>().Id,
+                        userId = u.As<User>().Id
+                    }).ResultsAsync).ToList();
+                
+                if (existsList.Any())
+                {
+                    return Ok("News is already liked by user");
+                }
+
+
+                var queryNews = _neo4j.Cypher
+                        .Match("(n:News)")
+                        .Where((News n) => n.Id == newsId)
+                        .Return(n => n.As<News>())
+                        .Limit(1);
+
+                var news = (await _queryCache.QueryCacheNoAdd(queryNews, $"news:{newsId}"));
+                if (news.Count() == 0)
+                {
+                    return NotFound("News not found!");
+                }
+
+                news.First().LikeCount += 1;
+                //if (Convert.ToInt64((db.KeyTimeToLive($"news:{newsId}"))) > 0)
+                //{
+
+                db.StringSet($"news:{newsId}", JsonConvert.SerializeObject(news), expiry: db.KeyTimeToLive($"news:{newsId}"));
+                //}
+
+                await _neo4j.Cypher
+                    .Match("(n:News), (u:User)")
+                    .Where((News n, User u) => n.Id == newsId && u.Id == userId)
+                    .Create("(u)-[:LIKES {date:$time}]->(n)")
+                    .WithParam("time", DateTime.Now)
+                    .ExecuteWithoutResultsAsync();
+
+                await _neo4j.Cypher
+                    .Match("(n:News)")
+                    .Where((News n) => n.Id == newsId)
+                    .Set("n.LikeCount=$likeCount")
+                    .WithParam("likeCount", news.First().LikeCount)
+                    .ExecuteWithoutResultsAsync();
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+
         }
 
         //[Authorize]
@@ -687,6 +904,7 @@ namespace NewsFlowAPI.Controllers
             Dictionary<double, double> newsIdHash = new Dictionary<double, double>();
 
             var newsIdsByTags = await _neo4j.Cypher
+                .Match("(u:User)-[ft:FOLLOWS_TAG]->(t:Tag)<-[tg:TAGGED]-(n:News)")
                 .Where((User u) => u.Id == userId)
                 .AndWhere("NOT (u)-[:SEEN]->(n)")
                 .With("n, SUM(ft.InterestCoefficient) AS num")
