@@ -32,7 +32,7 @@ class NewsService  {
 
     public async GetTrendingNews(){
         try{
-            const {data, status} = await api.get<News>("/GetTrending2")
+            const {data, status} = await api.get<News[]>("/GetTrending2")
 
             console.log(JSON.stringify(data, null, 4));
             console.log('response status is: ', status);
@@ -54,7 +54,7 @@ class NewsService  {
 
     public async GetForYou(){
         try{
-            const {data, status} = await api.get<News>("/GetForYou")
+            const {data, status} = await api.get<News[]>("/GetForYou")
 
             console.log(JSON.stringify(data, null, 4));
             console.log('response status is: ', status);

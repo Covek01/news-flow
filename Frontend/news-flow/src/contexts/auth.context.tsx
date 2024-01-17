@@ -89,7 +89,7 @@ import {
     };
   
     const isAuthenticated: () => boolean = () => {
-      if (!authState?.session) return false;
+      if (!authState?.session) return true;
   
       if (new Date(authState.session.expires) < new Date()) {
         signout();

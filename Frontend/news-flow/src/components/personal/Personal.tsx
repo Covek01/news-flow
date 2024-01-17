@@ -7,6 +7,7 @@ import newsService from "../../services/NewsService"
 import tagService from "../../services/TagService";
 import {Autocomplete, TextField} from "@mui/material"
 import { api } from "../../services/Service";
+import NewsService from "../../services/NewsService";
 
 const Personal: React.FC = () => {
     const [newsToShow, setNewsToShow] = React.useState<News[]>([])
@@ -15,7 +16,7 @@ const Personal: React.FC = () => {
         let news:News[];
 
         try{
-            news = await api.get("/GetForYou");
+            news = await NewsService.GetForYou();
         }
         catch(error: any){
             console.log('unexpected error in getting personal news: ', error)
