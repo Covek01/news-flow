@@ -45,6 +45,9 @@ const Trending: React.FC = () => {
         <div>
             <Bar />
             <NewsContainer newsList={newsToShow}/>
+            {!newsToShow.length&&(
+                <div>Unfortunately no news has been clicked on in the recent period :c</div>
+            )}
         </div>
     )
 }
