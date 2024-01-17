@@ -687,6 +687,7 @@ namespace NewsFlowAPI.Controllers
             Dictionary<double, double> newsIdHash = new Dictionary<double, double>();
 
             var newsIdsByTags = await _neo4j.Cypher
+                 .Match("(u:User)-[ft:FOLLOWS_TAG]->(t:Tag)<-[tg:TAGGED]-(n:News)")
                 .Where((User u) => u.Id == userId)
                 .AndWhere("NOT (u)-[:SEEN]->(n)")
                 .With("n, SUM(ft.InterestCoefficient) AS num")
