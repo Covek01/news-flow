@@ -12,6 +12,7 @@ import 'crypto-browserify';
 import { SignUp } from "./components/SignUp/Signup";
 import AuthenticatedGuard from "./components/RouteGuards/AuthenticatedGuard";
 import { AuthStateProvider } from "./contexts/auth.context";
+import NewsPage from "./components/newspage/NewsPage";
 
 
 
@@ -24,6 +25,7 @@ function App() {
             <Routes>
                 <Route>
                     <Route index element={<Navigate to="/personal" replace />} />
+                    <Route path="/newspage/:id" element={<NewsPage />} />
                     <Route path="/homepage" element={<Homepage />} />
                     <Route path="/newest" element={<Newest />} />
                     <Route path="/trending" element={<Trending />} />

@@ -9,6 +9,8 @@
         public string ImageUrl { get; set; } = String.Empty;
         public long authorId { get; set; }
         public long? locationId { get; set; }
+        public int? likeCount { get; set; }
+        public int? viewsCount { get; set; }
         public DateTime PostTime { get; set; }
     }
 }

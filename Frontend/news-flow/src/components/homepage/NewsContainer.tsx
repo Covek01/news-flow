@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import NewsBox from './NewsBox'; // Make sure to import the NewsBox component
-import News from "../../Types/News"
+import News from "../../models/News"
 
 const newsData: any[] = [
     {
@@ -29,7 +29,16 @@ const NewsContainer: React.FC<NewsContainerProps> = ({newsList}) => {
         <div>
             <Box display="flex" flexDirection="column" alignItems="center">
             {newsList.map((newsItem, index) => (
-                <NewsBox key={index} authorName={newsItem.authorName} title={newsItem.title} imageUrl={newsItem.imageUrl} />
+                <NewsBox
+                    key={index}
+                    id={newsItem.id}
+                    authorName={newsItem.authorName}
+                    title={newsItem.title}
+                    imageUrl={newsItem.imageUrl}
+                    likesCount={newsItem.likeCount}
+                    viewCount={newsItem.viewsCount}
+                    datetimePosted={newsItem.date}
+                    />
             ))}
             </Box>
         </div>
