@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppBar, Toolbar, IconButton, Typography, Box, Button, Avatar } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { SearchIconWrapper, StyledInputBase, Search } from "../search/Search";
@@ -6,8 +6,12 @@ import MenuIcon from '@mui/icons-material/Menu';
 import { useNavigate } from 'react-router-dom';
 import { lsGetUser } from '../../utils/helpers';
 import { useAuthContext } from '../../contexts/auth.context';
+import NoteAddIcon from '@mui/icons-material/NoteAdd';
+import theme from '../Theme';
+
 const Bar: React.FC = () => {
     const { isAuthenticated, signout, user } = useAuthContext();
+    const amIAuthor: boolean = ((user?.role ?? ' ') === 'Author')
 
     let navigate = useNavigate()
     const handleClickTrending = () => {
@@ -25,6 +29,14 @@ const Bar: React.FC = () => {
         navigate("/newest")
     }
     
+    const handleWriteNews = () => {
+        // Rutiranje na postove po odabiru
+        navigate("/writenews")
+    }
+
+    useEffect(() => {
+        console.log(JSON.stringify(user))
+    }, [])
 
     return (
         <div style={{height: '63px'}}>
@@ -50,6 +62,13 @@ const Bar: React.FC = () => {
                 </Box>
                 <Box sx={{ flexGrow: 1 }} />
                 <Box sx={{ display:'flex', alignItems:'center' /*{ xs: 'none', sm: 'block' }*/ }}>
+                    {amIAuthor? 
+                    <IconButton color="inherit" onClick={handleWriteNews}
+                         style={{ borderRadius: '10%', backgroundColor: theme.palette.primary.dark}}>
+                        <NoteAddIcon />
+                        <Typography sx={{ fontWeight: 'bold' }} textAlign="center">WRITE</Typography>
+                    </IconButton> : <></>
+                    }   
                     <Button color="inherit" onClick={handleClickNewest}>
                         <Typography sx={{ fontWeight: 'bold' }} textAlign="center">Newest</Typography>
                     </Button>

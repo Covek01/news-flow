@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import { CardHeader, Avatar, IconButton, CardActions, Stack } from '@mui/material';
+import { CardHeader, Avatar, IconButton, CardActions, Stack, Button } from '@mui/material';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import CardMedia from '@mui/material/CardMedia';
 import Typography from '@mui/material/Typography';
@@ -14,6 +14,7 @@ import { Route, useParams } from 'react-router-dom'
 import NewsService from '../../services/NewsService';
 import News from '../../models/News'
 import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
+import { useAuthContext } from '../../contexts/auth.context';
 
 
 
@@ -22,16 +23,18 @@ interface props {}
 const NewsPage: React.FC<props> = (
     props
     ) => {
-    const myid = 8 //ovde se menja nakon auth
+    const { isAuthenticated, signout, user } = useAuthContext();
+    const myid =  user? user.id : -1 //ovde se menja nakon auth
     const [isLikedByMe, setIsLikedByMe] = useState<boolean>(false)
     const [likedCount, setLikedCount] = useState<number>(0)
     const [newsInfo, setNewsInfo] = useState<News>(new News())
+    const [subscribedToWriter, setSubscribedToWriter] = useState<boolean>(false)
     const params = useParams()
     const newsId = Number(params.id)
 
     const likeButtonClicked = async () => {
         const isOkay: boolean = (isLikedByMe)? 
-            (await NewsService.DisikeNews(myid, newsId)) : (await NewsService.LikeNews(myid, newsId))
+            (await NewsService.DislikeNews(myid, newsId)) : (await NewsService.LikeNews(myid, newsId))
   
         if (isOkay){
           await setIsLikedByMe(!isLikedByMe)
@@ -40,18 +43,33 @@ const NewsPage: React.FC<props> = (
     }
 
     const initializeInfo = async () => {
-        const info = await NewsService.GetNewsById(newsId)
-        setNewsInfo(info)
+        const info = await NewsService.ClickNews(newsId)
+        setNewsInfo(info[0]);
         setLikedCount(newsInfo.likeCount)
+        
+        const {data, status} = await NewsService.IsNewsLikedByUser(myid, newsId)
+        console.log(`Result for liked between user ${myid} and ${newsId} is ${data}`)
+        if (status){
+            setIsLikedByMe(data)
+        }
     }
 
     const initializeLikeCount = async () => {
         setLikedCount(newsInfo.likeCount)
     }
 
+    const initializeSubscribedToWriter = () => { 
+        
+    }
+
+    const handleClickSubscribe = async () => {
+
+    }
+
 
     useEffect(() => {
         initializeInfo()
+
     }, [])
 
     useEffect(() => {
@@ -83,9 +101,15 @@ const NewsPage: React.FC<props> = (
                         style={{marginTop: '4%', marginBottom: '5%'}}>
                         {newsInfo.text}
                     </Typography>
-                    <Typography variant="body1" component="div">
-                        Author: {newsInfo.authorName}
-                    </Typography>
+                    <Stack direction="row" spacing={1}>
+                        <Typography variant="body1" component="div">
+                            Author: {newsInfo.authorName}
+                        </Typography>
+                        <Button style={{backgroundColor: theme.palette.primary.main}} onClick={handleClickSubscribe}>
+                            <Typography sx={{ fontWeight: 'bold' }} textAlign="center">Subscribe</Typography>
+                        </Button>
+                    </Stack>
+
                 </CardContent>
 
                 <CardActions sx={{backgroundColor: theme.palette.primary.main}}>
@@ -96,13 +120,13 @@ const NewsPage: React.FC<props> = (
                         }}>
                     {(!isLikedByMe)? <ThumbUpOffAltIcon /> : <ThumbUpIcon />}
                     <Typography style={{color: theme.palette.primary.contrastText, marginRight: '5%',  marginLeft: '15%'}} variant="body2" component="div">
-                        {`${newsInfo.likeCount}`}
+                        {newsInfo.likeCount}
                     </Typography>
                     </IconButton>
                     <Stack direction="row">
                     <VisibilityIcon style={{color: theme.palette.primary.contrastText}}/>
                     <Typography style={{color: theme.palette.primary.contrastText, marginRight: '5%', marginLeft: '15%'}} variant="body2" component="div">
-                        {`${newsInfo.viewsCount}`}
+                        {newsInfo.viewsCount}
                     </Typography>
                     </Stack>
 

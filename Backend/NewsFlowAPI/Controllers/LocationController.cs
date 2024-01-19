@@ -125,6 +125,27 @@ namespace NewsFlowAPI.Controllers
             return Ok(loc.ToList()[0].Name);
         }
 
+        //[Authorize]
+        [HttpGet("getByName/{name}")]
+        public async Task<ActionResult> GetLocationByName([FromRoute] string name)
+        {
+            var loc = await _neo4j.Cypher
+                .Match("(l:Location)")
+                .Where((Location l) => l.Name == name)
+                .Return(l => new
+                {
+                    l.As<Location>().Id,
+                    l.As<Location>().Name
+                })
+                .ResultsAsync;
+
+            if (loc.Count() == 0)
+            {
+                return NotFound($"Location with name: ${name} not found");
+            }
+            return Ok(loc.ToList()[0]);
+        }
+
 
         //[Authorize]
         [HttpGet("get")]
@@ -132,6 +153,22 @@ namespace NewsFlowAPI.Controllers
         {
             var loc = await _neo4j.Cypher
                 .Match("(l:Location)")
+                .Return(l => new
+                {
+                    l.As<Location>().Id,
+                    l.As<Location>().Name
+                })
+                .ResultsAsync;
+            return Ok(loc.ToList());
+        }
+
+        //[Authorize]
+        [HttpGet("getLocationsByPrefix/{prefix}")]
+        public async Task<ActionResult> GetAllLocations([FromRoute] string prefix)
+        {
+            var loc = await _neo4j.Cypher
+                .Match("(l:Location)")
+                .Where($"l.Name starts with '{prefix}'")
                 .Return(l => new
                 {
                     l.As<Location>().Id,

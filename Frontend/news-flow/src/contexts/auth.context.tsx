@@ -52,6 +52,7 @@ export function useAuthContext() {
 export function AuthStateProvider({ children }: AuthStateProviderProps) {
   const [authState, setAuthState] = useState<AuthState | null>({
     user: {
+      id: -1,
       name: "",
       email: "",
       phone: "",

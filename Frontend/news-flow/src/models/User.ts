@@ -1,6 +1,7 @@
 
 
 export default class User{
+    id: number
     name: string
     email: string
     phone?: string
@@ -10,7 +11,8 @@ export default class User{
     role: string
     isJournalist: boolean
 
-    constructor(name: string, email: string, phone: string, country: string, city: string, imageUrl: string, role: string){
+    constructor(id: number, name: string, email: string, phone: string, country: string, city: string, imageUrl: string, role: string){
+        this.id = id
         this.name = name
         this.email = email
         this.phone = phone

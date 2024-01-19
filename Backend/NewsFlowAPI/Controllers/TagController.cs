@@ -358,5 +358,20 @@ namespace NewsFlowAPI.Controllers
             return Ok();
 
         }
+
+        [HttpGet("getTagsByPrefix/{prefix}")]
+        public async Task<ActionResult> GetAllTagsByPrefix([FromRoute] string prefix)
+        {
+            var loc = await _neo4j.Cypher
+                .Match("(t:Tag)")
+                .Where($"t.Name starts with '{prefix}'")
+                .Return(t => new
+                {
+                    t.As<Tag>().Id,
+                    t.As<Tag>().Name
+                })
+                .ResultsAsync;
+            return Ok(loc.ToList());
+        }
     }
 }

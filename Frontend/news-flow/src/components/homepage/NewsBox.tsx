@@ -15,6 +15,7 @@ import { useState, useEffect } from 'react';
 import NewsService from '../../services/NewsService';
 import CardActionArea from '@mui/material';
 import { TheaterComedySharp } from '@mui/icons-material';
+import { useAuthContext } from '../../contexts/auth.context';
 
 
 interface NewsCardProps {
@@ -37,7 +38,8 @@ const NewsCard: React.FC<NewsCardProps> = ({
   viewCount,
   datetimePosted
 }) => {
-  const myid = 8 //ovde se menja nakon auth
+  const { isAuthenticated, signout, user } = useAuthContext();
+  const myid = user? user.id : -1//ovde se menja nakon auth
   const [isLikedByMe, setIsLikedByMe] = useState<boolean>(false)
   const [likedCount, setLikedCount] = useState<number>(likesCount)
   const [isHovered, setIsHovered] = useState<boolean>(false)
@@ -51,12 +53,20 @@ const NewsCard: React.FC<NewsCardProps> = ({
       setIsLikedByMe(!isLikedByMe)
       setLikedCount((isLikedByMe)? (likedCount - 1):(likedCount + 1))
       const isOkay: boolean = (isLikedByMe)? 
-          (await NewsService.DisikeNews(myid, id)) : (await NewsService.LikeNews(myid, id))
+          (await NewsService.DislikeNews(myid, id)) : (await NewsService.LikeNews(myid, id))
 
       if (!isOkay){
         await setIsLikedByMe(!isLikedByMe)
         setLikedCount((isLikedByMe)? (likedCount - 1):(likedCount + 1))
       }
+  }
+
+  const initialSetIsLiked = async () => {
+    const {data, status} = await NewsService.IsNewsLikedByUser(myid, id)
+    console.log(`For id ${id} result is ${data}`)
+    if (status){
+      setIsLikedByMe(data)
+    }
   }
 
   function handleMouseOver() {
@@ -67,6 +77,11 @@ const NewsCard: React.FC<NewsCardProps> = ({
       setIsHovered( false );
   }
 
+  useEffect(() => {
+    console.log(`id:${id}\title:${title}\nLikes count:${likesCount}`)
+    initialSetIsLiked()
+  }, [])
+
 
   return (
     <Card
@@ -76,7 +91,7 @@ const NewsCard: React.FC<NewsCardProps> = ({
           await linkToFullNews()
         }}>
                 {(isHovered)? 
-                <div style={{backgroundColor: '#bdbdbd'}}>
+                <div style={{backgroundColor: '#bdbdbd', cursor: 'pointer'}}>
                       <CardHeader
                           title={title}
                           subheader={datetimePosted.toString()}

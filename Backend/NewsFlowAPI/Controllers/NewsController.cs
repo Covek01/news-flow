@@ -23,6 +23,7 @@ using Microsoft.Extensions.Configuration.UserSecrets;
 
 namespace NewsFlowAPI.Controllers
 {
+
     public class NewsController : Controller
     {
         private readonly string _newestNewsKey;
@@ -100,10 +101,6 @@ namespace NewsFlowAPI.Controllers
 
                 news.PostTime = DateTime.Now;
 
-                await _neo4j.Cypher
-                 .Create("(n:News $news)")
-                 .WithParam("news", news)
-                 .ExecuteWithoutResultsAsync();
 
 
                 //tags nodes
@@ -136,6 +133,12 @@ namespace NewsFlowAPI.Controllers
                 {
                     throw new Exception("THERE ISN'T ANY AUTHOR WITH THAT ID");
                 }
+
+
+                await _neo4j.Cypher
+                 .Create("(n:News $news)")
+                 .WithParam("news", news)
+                 .ExecuteWithoutResultsAsync();
 
 
                 //tagovi
@@ -460,7 +463,7 @@ namespace NewsFlowAPI.Controllers
         }
 
         //[Authorize]
-        [HttpGet("ClickNews2/{id}")]
+        [HttpGet("news/ClickNews2/{id}")]
         public async Task<ActionResult> ClickNewsId2([FromRoute] long id)
         {
             var db = _redis.GetDatabase();
@@ -494,7 +497,7 @@ namespace NewsFlowAPI.Controllers
         }
 
         //[Authorize]
-        [HttpGet("GetTrending2")]
+        [HttpGet("news/GetTrending2")]
         public async Task<ActionResult> GetTrending2()
         {
             var db = _redis.GetDatabase();
@@ -536,7 +539,7 @@ namespace NewsFlowAPI.Controllers
 
         //NE KORISTI SE 
         //[Authorize]
-        [HttpGet("GetTrending")]
+        [HttpGet("news/GetTrending")]
         public async Task<ActionResult> GetTrending()
         {
             return BadRequest("DEPRECATED");
@@ -664,7 +667,7 @@ namespace NewsFlowAPI.Controllers
 
         //NE KORISTI SE
         //[Authorize]
-        [HttpGet("ClickNews/{id}")]
+        [HttpGet("news/ClickNews/{id}")]
         public async Task<ActionResult> ClickNewsId([FromRoute] long id)
         {
             return BadRequest("DEPRECATED");
@@ -763,7 +766,7 @@ namespace NewsFlowAPI.Controllers
         }
 
         //[Authorize]
-        [HttpPut("DislikeNews/{userId}/{newsId}")]
+        [HttpPut("news/DislikeNews/{userId}/{newsId}")]
         public async Task<ActionResult> DislikeNews([FromRoute] long userId, [FromRoute] long newsId)
         {
             try
@@ -812,7 +815,7 @@ namespace NewsFlowAPI.Controllers
         }
 
         //[Authorize]
-        [HttpPut("LikeNewsAndSetLikedRelation/{userId}/{newsId}")]
+        [HttpPut("news/LikeNewsAndSetLikedRelation/{userId}/{newsId}")]
         public async Task<ActionResult> LikeNewsAndSetLikedRelation([FromRoute] long userId, [FromRoute] long newsId)
         {
 
@@ -877,7 +880,7 @@ namespace NewsFlowAPI.Controllers
         }
 
         //[Authorize]
-        [HttpGet("GetForYou")]
+        [HttpGet("news/GetForYou")]
         public async Task<ActionResult>GetForYou()
         {
             var claims = HttpContext.User.Claims;
@@ -993,7 +996,7 @@ namespace NewsFlowAPI.Controllers
 
 
         //[Authorize]
-        [HttpPost("SeenNews")]
+        [HttpPost("news/SeenNews")]
         public async Task<ActionResult> SeenNews([FromQuery] double userId, [FromQuery] double newsId)
         {
             var curDate = DateTime.Now;

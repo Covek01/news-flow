@@ -45,6 +45,55 @@ class TagService  {
             }
         }
     }
+
+    public async GetTagsByPrefix(prefix: string){
+        try{
+            const {data, status} = await api.get<Tag[]>(`tag/getTagsByPrefix/${prefix}`)
+
+            console.log(JSON.stringify(data, null, 4));
+            console.log('response status is: ', status);
+
+            return data
+        }
+        catch (error) {
+            if (axios.isAxiosError(error)) {
+                console.log('error message: ', error.message);
+                
+                const errObject: Tag[] = []
+                return errObject;
+            } else {
+                console.log('unexpected error: ', error);
+
+                const errObject: Tag[] = []
+                return errObject;
+            }
+        }
+    }
+
+
+    public async GetTagsByName(name: string){
+        try{
+            const {data, status} = await api.get<Tag[]>(`tag/getByName/${name}`)
+
+            console.log(JSON.stringify(data, null, 4));
+            console.log('response status is: ', status);
+
+            return data
+        }
+        catch (error) {
+            if (axios.isAxiosError(error)) {
+                console.log('error message: ', error.message);
+                
+                const errObject: Tag[] = []
+                return errObject;
+            } else {
+                console.log('unexpected error: ', error);
+
+                const errObject: Tag[] = []
+                return errObject;
+            }
+        }
+    }
 }
 
 export default new TagService

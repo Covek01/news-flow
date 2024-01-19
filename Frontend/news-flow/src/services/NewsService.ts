@@ -32,7 +32,7 @@ class NewsService  {
 
     public async GetTrendingNews(){
         try{
-            const {data, status} = await api.get<News[]>("/GetTrending2")
+            const {data, status} = await api.get<News[]>("news/GetTrending2")
 
             console.log(JSON.stringify(data, null, 4));
             console.log('response status is: ', status);
@@ -54,7 +54,7 @@ class NewsService  {
 
     public async GetForYou(){
         try{
-            const {data, status} = await api.get<News[]>("/GetForYou")
+            const {data, status} = await api.get<News[]>("news/GetForYou")
 
             console.log(JSON.stringify(data, null, 4));
             console.log('response status is: ', status);
@@ -76,9 +76,9 @@ class NewsService  {
         }
     }
 
-    public async GetNewsById(id: number){
+    public async ClickNews(id: number){
         try{
-            const {data, status} = await api.get<News>(`/news/getNewsById/${id}`)
+            const {data, status} = await api.get<News[]>(`news/ClickNews2/${id}`)
 
             console.log(JSON.stringify(data, null, 4));
             console.log('response status is: ', status);
@@ -89,12 +89,12 @@ class NewsService  {
             if (axios.isAxiosError(error)) {
                 console.log('error message: ', error.message);
                 
-                const errObject: News = new News()
+                const errObject: News[] = []
                 return errObject;
             } else {
                 console.log('unexpected error: ', error);
 
-                const errObject: News = new News()
+                const errObject: News[] = []
                 return errObject;
             }
         }
@@ -102,7 +102,7 @@ class NewsService  {
 
     public async LikeNews(userId: number, newsId: number){
         try{
-            const {data, status} = await api.put<boolean>(`LikeNewsAndSetLikedRelation/${userId}/${newsId}`)
+            const {data, status} = await api.put<boolean>(`news/LikeNewsAndSetLikedRelation/${userId}/${newsId}`)
 
             console.log(JSON.stringify(data, null, 4));
             console.log('response status is: ', status);
@@ -122,9 +122,9 @@ class NewsService  {
         }
     }
 
-    public async DisikeNews(userId: number, newsId: number){
+    public async DislikeNews(userId: number, newsId: number){
         try{
-            const {data, status} = await api.put<boolean>(`DislikeNews/${userId}/${newsId}`)
+            const {data, status} = await api.put<boolean>(`news/DislikeNews/${userId}/${newsId}`)
 
             console.log(JSON.stringify(data, null, 4));
             console.log('response status is: ', status);
@@ -146,7 +146,7 @@ class NewsService  {
 
     public async IsNewsLikedByUser(userId: number, newsId: number){
         try{
-            const {data, status} = await api.get<boolean>(`LikeNewsAndSetLikedRelation/${userId}/${newsId}`)
+            const {data, status} = await api.get<boolean>(`news/isNewsLikedByUser/${userId}/${newsId}`)
 
             console.log(JSON.stringify(data, null, 4));
             console.log('response status is: ', status);
@@ -157,11 +157,33 @@ class NewsService  {
             if (axios.isAxiosError(error)) {
                 console.log('error message: ', error.message);
                 
-                return {data: null, status: false}
+                return {data: false, status: false}
             } else {
                 console.log('unexpected error: ', error);
 
-                return {data: null, status: false}
+                return {data: false, status: false}
+            }
+        }
+    }
+
+    public async CreateNews(news: object){
+        try{
+            const {data, status} = await api.post<boolean>(`news/createnews`, news)
+
+            console.log(JSON.stringify(data, null, 4));
+            console.log('response status is: ', status);
+
+            return true
+        }
+        catch (error) {
+            if (axios.isAxiosError(error)) {
+                console.log('error message: ', error.message);
+                
+                return false;
+            } else {
+                console.log('unexpected error: ', error);
+
+                return false;
             }
         }
     }
