@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Neo4jClient;
+using NewsFlowAPI.DTOs;
 using NewsFlowAPI.Models;
 using NewsFlowAPI.Services;
 using StackExchange.Redis;
@@ -169,13 +170,14 @@ namespace NewsFlowAPI.Controllers
             var loc = await _neo4j.Cypher
                 .Match("(l:Location)")
                 .Where($"l.Name starts with '{prefix}'")
-                .Return(l => new
+                .Return(l => new AuthorInfoDTO
                 {
-                    l.As<Location>().Id,
-                    l.As<Location>().Name
+                    Id = l.As<Location>().Id,
+                    Name = l.As<Location>().Name
                 })
                 .ResultsAsync;
             return Ok(loc.ToList());
         }
+
     }
 }

@@ -8,7 +8,18 @@ import newsService from "../../services/NewsService"
 import { Buffer } from "buffer";
 import Redis from 'ioredis'
 import { channel } from "diagnostics_channel";
-
+import {Stack, Autocomplete, IconButton, TextField, Typography, Chip} from '@mui/material'
+import AddIcon from '@mui/icons-material/Add'
+import {useState, useEffect} from 'react'
+import Tag from '../../models/Tag'
+import theme from "../Theme";
+import TagService from "../../services/TagService";
+import LocationService from "../../services/LocationService";
+import Location from "../../models/Location";
+import { useAuthContext } from "../../contexts/auth.context";
+import UserService from "../../services/UserService";
+import User from "../../models/User";
+import UserWriter from "../../models/UserWriter";
 
 
 interface NewestProps{
@@ -41,6 +52,8 @@ type ReturnTypeForNews = {
 }
 
 const Newest: React.FC = () => {
+    const { isAuthenticated, signout, user } = useAuthContext();
+    const myid: number = user?.id ?? -1
     const [newsToShow, setNewsToShow] = React.useState<News[]>([])
     //const [redisClient, setRedisClient] = React.useState(null)
 
@@ -52,6 +65,56 @@ const Newest: React.FC = () => {
 
     const channelForNewestNews = 'newestnews'
 
+
+    const [tags, setTags] = useState<Tag[]>([]);
+    const [locations, setLocations] = useState<Location[]>([]);
+    const [selectedTag, setSelectedTag] = useState<string | null>(null);
+    const [chosenTag, setChosenTag] = useState<Tag | null>(null);
+    const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+    const [selectedWriter, setSelectedWriter] = useState<UserWriter | null>(null);
+    const [writers, setWriters] = useState<UserWriter[]>([]);
+    const [selectedTags, setSelectedTags] = useState<Tag[]>([])     //used to create news
+    const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false)
+
+    
+    const getTags = async (input: string | null) => {
+        if (input === null){
+            input = ""
+        }
+        return await TagService.GetTagsByName(input)
+    }
+    
+    const getLocations = async (input: string) => {
+        return await LocationService.GetLocationsByPrefix(input)
+    }
+
+    const getWriters = async (input: string) => {
+        return await UserService.GetWritersByPrefix(input)
+    }
+
+    const insertListedTag = async (tag: Tag | null) => {
+            if (chosenTag === null  || tag?.name === ''){
+                return
+            }
+
+            const t: Tag = new Tag(tag?.id ?? -1, tag?.name ?? '')
+            const arr = selectedTags.filter(x => {
+                return t.id === x.id
+            })
+            if (arr.length !== 0){
+                return
+            }
+            setSelectedTags([...selectedTags, t])
+            console.log(selectedTags)
+            setChosenTag(null)
+    }
+
+    const handleDeleteTag = async (id: number) => {
+        setSelectedTags(selectedTags.filter(tag => 
+            tag.id !== id
+        ))
+        console.log(`Tag is deleted, now selected tags are ${JSON.stringify(selectedTags)}`)
+    }
 
     
      const initalizeNews = async () => {
@@ -109,6 +172,86 @@ const Newest: React.FC = () => {
     return (
         <div>
             <Bar />
+            
+            <div style={{marginLeft: 'auto', marginRight: 'auto', width: '80%'}}>
+                <Stack direction="row">
+                    <Autocomplete
+                        style={{marginTop: '5%', width: '40%', maxWidth: '300px'}}
+                        options={tags.map((tag) => tag.name)}
+                        getOptionLabel={(option) => option}
+                        value={selectedTag}
+                        onChange={async (_, newValue) => {
+                            const newTags = await getTags(newValue);
+                            await setChosenTag(newTags[0])
+                            console.log(`Chosen tag is {id:${newTags[0].id} name:${newTags[0].name}}`)
+                        }}
+                        onSelect={ (_) => {
+
+                            const a = 5
+                            const b = 6
+                        }}
+                        onInputChange={async (_, newInputValue) => {
+                        const newTags = await getTags(newInputValue);
+                        setTags(newTags);
+                        }}
+                        renderInput={(params) => (
+                        <TextField {...params} label="Tag" variant="outlined" />
+                        )}
+                        autoComplete
+                    />
+                    <IconButton color="inherit" onClick={e => {
+                        insertListedTag(chosenTag)
+                    }}
+                        style={{ height: '50%', width: '20%',  maxWidth: '150px', borderRadius: '5%', backgroundColor: theme.palette.primary.main,
+                        color: theme.palette.primary.contrastText, alignSelf: 'center', marginTop: '4.5%', marginLeft: '4%'}}>
+                        <AddIcon />
+                        <Typography sx={{ fontWeight: 'bold' }} textAlign="center">ADD</Typography>
+                    </IconButton>
+                </Stack>
+
+                <Stack direction="row" spacing={1} style={{marginBottom: '5%', marginTop:'1%'}}>
+                    {selectedTags.map(tag => {
+                        return <Chip key={tag.id} label={tag.name} onDelete={e => {
+                            handleDeleteTag(tag.id)}
+                        } />
+                    })}
+                </Stack>
+                <Autocomplete   
+                    style={{marginTop: '1%', marginBottom: '1%', width: '40%',  maxWidth: '300px'}}
+                    options={locations.map((location) => location.name)}
+                    getOptionLabel={(option) => option}
+                    value={selectedLocation?.name ?? ""}
+                    onChange={async (_, newValue) => {
+                        const loc = await LocationService.GetLocationByName(newValue ?? "")
+                        setSelectedLocation(loc)
+                    }}
+                    onInputChange={async (_, newInputValue) => {
+                        const newLocations = await getLocations(newInputValue);
+                        setLocations(newLocations);
+                    }}
+                    renderInput={(params) => (
+                    <TextField {...params} label="Location" variant="outlined" />
+                    )}
+                />
+                <Autocomplete   
+                    style={{marginTop: '1%', marginBottom: '1%', width: '40%',  maxWidth: '300px'}}
+                    options={writers.map((author) => author.name)}
+                    getOptionLabel={(option) => option}
+                    value={selectedWriter?.name ?? ""}
+                    onChange={async (_, newValue) => {
+                        const loc = await UserService.GetWriterByName(newValue ?? "")
+                        const val = (loc.length > 0)? loc[0] : null
+                        setSelectedWriter(val)
+                    }}
+                    onInputChange={async (_, newInputValue) => {
+                        const newWriters = await getWriters(newInputValue);
+                        setWriters(newWriters);
+                    }}
+                    renderInput={(params) => (
+                    <TextField {...params} label="Location" variant="outlined" />
+                    )}
+                />
+            </div>
             <NewsContainer newsList={newsToShow}/>
         </div>
     );

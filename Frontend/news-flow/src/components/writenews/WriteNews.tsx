@@ -154,8 +154,8 @@ const WriteNews: React.FC<props> = (props) => {
                     <IconButton color="inherit" onClick={e => {
                         insertListedTag(chosenTag)
                     }}
-                        style={{ height: '50%', borderRadius: '10%', backgroundColor: theme.palette.primary.main,
-                         color: theme.palette.primary.contrastText}}>
+                        style={{ height: '50%', width: '20%', borderRadius: '5%', backgroundColor: theme.palette.primary.main,
+                         color: theme.palette.primary.contrastText, alignSelf: 'center', marginTop: '4.5%', marginLeft: '4%'}}>
                         <AddIcon />
                         <Typography sx={{ fontWeight: 'bold' }} textAlign="center">ADD</Typography>
                     </IconButton>

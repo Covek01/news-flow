@@ -10,5 +10,7 @@ namespace NewsFlowAPI.Services
         public Task<List<News>> GetNewsByAuthor(int idAuthor);
         public Task<List<News>> GetNewsByTags(List<Tag> tags);
         public Task<List<News>> GetTrendingNews();
+        public Task<List<News>> GetNewsUnfiltered();
+        public Task<List<News>> GetNewsFiltered(List<long> tagIds, long locationId, long writerId);
     }
 }

@@ -404,6 +404,64 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
+
+
+        [HttpPost("news/getNewestNewsFiltered")]
+        public async Task<ActionResult> GetNewestNews2([FromBody] NewsFilterDTO filter)
+        {
+            try
+            {
+                var db = _redis.GetDatabase();
+
+                var news = await db.ListRangeAsync(_newestNewsKey);
+                var newsDeserialized = new List<News>();
+
+                foreach (var n in news)
+                {
+                    newsDeserialized.Add(JsonConvert.DeserializeObject<News>(n));
+                }
+
+
+
+                var newsReturnTasks = newsDeserialized.Select(async p =>
+                {
+
+                    var author = (await _neo4j.Cypher
+                                    .Match("(u:User)")
+                                    .Where((User u) => u.Id == p.AuthorId)
+                                    .Return(u => u.As<User>().Name)
+                                    .ResultsAsync).FirstOrDefault();
+
+                    return new NewsReturnDTO
+                    {
+                        Id = p.Id,
+                        Title = p.Title,
+                        Text = p.Text,
+                        Summary = p.Summary,
+                        ImageUrl = p.ImageUrl,
+                        locationId = p.LocationId,
+                        ViewsCount = p.ViewsCount,
+                        LikeCount = p.LikeCount,
+                        authorId = p.AuthorId,
+                        PostTime = p.PostTime,
+                        authorName = author
+                    };
+                });
+
+                var newsReturnResults = await Task.WhenAll(newsReturnTasks);
+
+                return Ok(newsReturnResults.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+
+
+
+
         [HttpGet("news/isNewsLikedByUser/{userId}/{newsId}")]
         public async Task<ActionResult> IsNewsLikedByUser([FromRoute] long userId, [FromRoute] long newsId)
         {
@@ -870,7 +928,7 @@ namespace NewsFlowAPI.Controllers
                     .Set("n.LikeCount=$likeCount")
                     .WithParam("likeCount", news.First().LikeCount)
                     .ExecuteWithoutResultsAsync();
-                return Ok();
+                return Ok("Like added");
             }
             catch(Exception ex)
             {

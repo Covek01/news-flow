@@ -50,15 +50,35 @@ const NewsCard: React.FC<NewsCardProps> = ({
   }
 
   const likeButtonClicked = async () => {
-      setIsLikedByMe(!isLikedByMe)
-      setLikedCount((isLikedByMe)? (likedCount - 1):(likedCount + 1))
-      const isOkay: boolean = (isLikedByMe)? 
-          (await NewsService.DislikeNews(myid, id)) : (await NewsService.LikeNews(myid, id))
-
-      if (!isOkay){
-        await setIsLikedByMe(!isLikedByMe)
-        setLikedCount((isLikedByMe)? (likedCount - 1):(likedCount + 1))
+      if (isLikedByMe){
+        const oldCount = likedCount
+        setIsLikedByMe(false)
+        setLikedCount(likedCount - 1)
+        const isOkay: boolean = await NewsService.DislikeNews(myid, id)
+        if (!isOkay){
+          setIsLikedByMe(true)
+          setLikedCount(oldCount)
+        }
       }
+      else{
+        const oldCount = likedCount
+        setIsLikedByMe(true)
+        setLikedCount(likedCount + 1)
+        const isOkay: boolean = await NewsService.LikeNews(myid, id)
+        if (!isOkay){
+          setIsLikedByMe(false)
+          setLikedCount(oldCount)
+        }
+      }
+      // setIsLikedByMe(!isLikedByMe)
+      // setLikedCount((isLikedByMe)? (likedCount - 1):(likedCount + 1))
+      // const isOkay: boolean = (isLikedByMe)? 
+      //     (await NewsService.DislikeNews(myid, id)) : (await NewsService.LikeNews(myid, id))
+
+      // if (!isOkay){
+      //   await setIsLikedByMe(!isLikedByMe)
+      //   setLikedCount((isLikedByMe)? (likedCount - 1):(likedCount + 1))
+      // }
   }
 
   const initialSetIsLiked = async () => {

@@ -285,6 +285,36 @@ namespace NewsFlowAPI.Controllers
             return Ok(baseQueryResult);
         }
 
+        [HttpGet("GetUserById/{id}")]
+        public async Task<ActionResult> GetFullUserById(long id)
+        {
+            try
+            {
+                var userId = long.Parse(HttpContext.User.Claims.FirstOrDefault(c => c.Type.Equals("Id"))?.Value ?? "-1");
+
+                var baseQueryResult = await _neo4j.Cypher
+                    .Match("(u:User)")
+                    .Where((User u) => u.Id == id)
+                    .Return(u => new AuthorInfoDTO
+                    {
+                        Id = u.As<User>().Id,
+                        Name = u.As<User>().Name
+                    }).ResultsAsync;
+
+                var result = baseQueryResult.ToList();
+                if (result.Count == 0)
+                {
+                    throw new Exception("USER DOESN'T EXIST");
+                }
+
+                return Ok(result);
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
 
         //[Authorize(Roles="Admin")]
         [HttpDelete("DeleteExpiredConfirmation")]
@@ -512,6 +542,38 @@ namespace NewsFlowAPI.Controllers
         }
 
         //[Authorize]
+        [HttpPut("UnsubscribeFrom2")]
+        public async Task<ActionResult> UnsubscribeFrom2([FromBody] List<long> userIds)
+        {
+            try
+            {
+                var claims = HttpContext.User.Claims;
+
+                var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+
+                if (userId == -1)
+                    return Unauthorized("Error user not signed in");
+
+                var query = await _neo4j.Cypher
+                    .Match("(u1:User)-[st:SUBSCRIBED_TO]->(u2:User)")
+                    .Where("u2.Id IN $userIds")
+                    .AndWhere((User u1) => u1.Id == userId)
+                    .WithParam("userIds", userIds)
+                    .Delete("st")
+                    .Return(u2 => u2.As<User>().Id)
+                    .ResultsAsync;
+
+                var lista = query.ToList();
+
+                return Ok(lista.Count);
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        //[Authorize]
         [HttpGet("DoUserFollowWriter/{userId}/{followedId}")]
         public async Task<ActionResult> DoUserFollowWriter([FromRoute] long userId, [FromRoute] long followedId)
         {
@@ -566,6 +628,37 @@ namespace NewsFlowAPI.Controllers
                 .ExecuteWithoutResultsAsync();
 
             return Ok(u);
+        }
+
+        [HttpGet("getWritersByPrefix/{prefix}")]
+        public async Task<ActionResult> GetWritersByPrefix([FromRoute] string prefix)
+        {
+            var loc = await _neo4j.Cypher
+                .Match("(u:User)")
+                .Where($"u.Name starts with '{prefix}'")
+                .AndWhere((User u) => u.Role == "Author")
+                .Return(u => new AuthorInfoDTO
+                {
+                    Id = u.As<User>().Id,
+                    Name = u.As<User>().Name
+                })
+                .ResultsAsync;
+            return Ok(loc.ToList());
+        }
+
+        [HttpGet("getWriterByName/{name}")]
+        public async Task<ActionResult> GetWriterByName([FromRoute] string name)
+        {
+            var loc = await _neo4j.Cypher
+                .Match("(u:User)")
+                .Where((User u) => u.Name == name)
+                .Return(u => new AuthorInfoDTO
+                {
+                    Id = u.As<User>().Id,
+                    Name = u.As<User>().Name
+                })
+                .ResultsAsync;
+            return Ok(loc.ToList());
         }
     }
 }

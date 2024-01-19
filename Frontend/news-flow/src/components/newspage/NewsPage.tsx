@@ -15,6 +15,9 @@ import NewsService from '../../services/NewsService';
 import News from '../../models/News'
 import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
 import { useAuthContext } from '../../contexts/auth.context';
+import UserService from '../../services/UserService'
+import UserWriter from '../../models/UserWriter';
+import SubscribeButton from './SubscribeButton';
 
 
 
@@ -28,44 +31,64 @@ const NewsPage: React.FC<props> = (
     const [isLikedByMe, setIsLikedByMe] = useState<boolean>(false)
     const [likedCount, setLikedCount] = useState<number>(0)
     const [newsInfo, setNewsInfo] = useState<News>(new News())
+    const [writerName, setWriterName] = useState<string>('')
     const [subscribedToWriter, setSubscribedToWriter] = useState<boolean>(false)
     const params = useParams()
     const newsId = Number(params.id)
 
     const likeButtonClicked = async () => {
-        const isOkay: boolean = (isLikedByMe)? 
-            (await NewsService.DislikeNews(myid, newsId)) : (await NewsService.LikeNews(myid, newsId))
+        if (isLikedByMe){
+            const oldCount = likedCount
+            setIsLikedByMe(false)
+            setLikedCount(likedCount - 1)
+            const isOkay: boolean = await NewsService.DislikeNews(myid, newsId)
+            if (!isOkay){
+              setIsLikedByMe(true)
+              setLikedCount(oldCount)
+            }
+          }
+          else{
+            const oldCount = likedCount
+            setIsLikedByMe(true)
+            setLikedCount(likedCount + 1)
+            const isOkay: boolean = await NewsService.LikeNews(myid, newsId)
+            if (!isOkay){
+              setIsLikedByMe(false)
+              setLikedCount(oldCount)
+            }
+          }
+
+
+        // const isOkay: boolean = (isLikedByMe)? 
+        //     (await NewsService.DislikeNews(myid, newsId)) : (await NewsService.LikeNews(myid, newsId))
   
-        if (isOkay){
-          await setIsLikedByMe(!isLikedByMe)
-          setLikedCount((isLikedByMe)? (likedCount - 1):(likedCount + 1))
-        }
+        // if (isOkay){
+        //   await setIsLikedByMe(!isLikedByMe)
+        //   setLikedCount((isLikedByMe)? (likedCount - 1):(likedCount + 1))
+        // }
     }
 
     const initializeInfo = async () => {
         const info = await NewsService.ClickNews(newsId)
         setNewsInfo(info[0]);
         setLikedCount(newsInfo.likeCount)
+        const user: UserWriter[] = await UserService.GetUserWriterById(info[0].authorId)
+        if (user.length > 0){
+            setWriterName(user[0].name)
+        }
+
         
         const {data, status} = await NewsService.IsNewsLikedByUser(myid, newsId)
-        console.log(`Result for liked between user ${myid} and ${newsId} is ${data}`)
         if (status){
             setIsLikedByMe(data)
         }
+
+
     }
 
     const initializeLikeCount = async () => {
         setLikedCount(newsInfo.likeCount)
     }
-
-    const initializeSubscribedToWriter = () => { 
-        
-    }
-
-    const handleClickSubscribe = async () => {
-
-    }
-
 
     useEffect(() => {
         initializeInfo()
@@ -101,15 +124,16 @@ const NewsPage: React.FC<props> = (
                         style={{marginTop: '4%', marginBottom: '5%'}}>
                         {newsInfo.text}
                     </Typography>
-                    <Stack direction="row" spacing={1}>
+                    <Stack direction="row" spacing={8}>
                         <Typography variant="body1" component="div">
-                            Author: {newsInfo.authorName}
+                            Author: {writerName}
                         </Typography>
-                        <Button style={{backgroundColor: theme.palette.primary.main}} onClick={handleClickSubscribe}>
-                            <Typography sx={{ fontWeight: 'bold' }} textAlign="center">Subscribe</Typography>
-                        </Button>
+                        {(myid !== newsInfo.authorId)? 
+                             <SubscribeButton myid={myid} subscribedId={newsInfo.authorId} isSubscribed={subscribedToWriter}/>
+                             :
+                             <></>
+                        }
                     </Stack>
-
                 </CardContent>
 
                 <CardActions sx={{backgroundColor: theme.palette.primary.main}}>
@@ -124,10 +148,10 @@ const NewsPage: React.FC<props> = (
                     </Typography>
                     </IconButton>
                     <Stack direction="row">
-                    <VisibilityIcon style={{color: theme.palette.primary.contrastText}}/>
-                    <Typography style={{color: theme.palette.primary.contrastText, marginRight: '5%', marginLeft: '15%'}} variant="body2" component="div">
-                        {newsInfo.viewsCount}
-                    </Typography>
+                        <VisibilityIcon style={{color: theme.palette.primary.contrastText}}/>
+                        <Typography style={{color: theme.palette.primary.contrastText, marginRight: '5%', marginLeft: '15%'}} variant="body2" component="div">
+                            {newsInfo.viewsCount}
+                        </Typography>
                     </Stack>
 
                 </CardActions>
