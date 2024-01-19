@@ -548,8 +548,11 @@ namespace NewsFlowAPI.Controllers
             //        .Set("n.ViewsCount=$views")
             //        .WithParam("views", news.ViewsCount + 1)
             //        .ExecuteWithoutResultsAsync();
-
-            db.StringSet($"news:{id}", JsonConvert.SerializeObject(news), expiry: db.KeyTimeToLive($"news:{id}"));
+            var timeToLive = db.KeyTimeToLive($"news:{id}");
+            if(timeToLive!=null&&timeToLive.Value.TotalSeconds>0)
+            {
+            db.StringSet($"news:{id}", JsonConvert.SerializeObject(news), expiry:timeToLive);
+            }
 
             return Ok(news);
         }
@@ -807,7 +810,10 @@ namespace NewsFlowAPI.Controllers
                     return NotFound("News not found!");
                 }
                 news.First().LikeCount += 1;
-                db.StringSet($"news:{id}", JsonConvert.SerializeObject(news), expiry: db.KeyTimeToLive($"news:{id}"));
+                var timeToLive = db.KeyTimeToLive($"news:{id}");
+                if (timeToLive != null && timeToLive.Value.TotalSeconds > 0) {
+                    db.StringSet($"news:{id}", JsonConvert.SerializeObject(news), expiry:timeToLive );
+                }
                 await _neo4j.Cypher
                     .Match("(n:News)")
                     .Where((News n) => n.Id == id)
@@ -852,7 +858,10 @@ namespace NewsFlowAPI.Controllers
                 //if (Convert.ToInt64((db.KeyTimeToLive($"news:{newsId}"))) > 0)
                 //{
 
-                db.StringSet($"news:{newsId}", JsonConvert.SerializeObject(news), expiry: db.KeyTimeToLive($"news:{newsId}"));
+                var timeToLive = db.KeyTimeToLive($"news:{newsId}");
+                if (timeToLive != null && timeToLive.Value.TotalSeconds > 0) {
+                    db.StringSet($"news:{newsId}", JsonConvert.SerializeObject(news), expiry:timeToLive );
+                }
                 //}
 
                 await _neo4j.Cypher
@@ -911,9 +920,13 @@ namespace NewsFlowAPI.Controllers
                 news.First().LikeCount += 1;
                 //if (Convert.ToInt64((db.KeyTimeToLive($"news:{newsId}"))) > 0)
                 //{
+                var timeToLive = db.KeyTimeToLive($"news:{newsId}");
+                if (timeToLive != null && timeToLive.Value.TotalSeconds > 0)
+                {
+                    db.StringSet($"news:{newsId}", JsonConvert.SerializeObject(news), expiry:timeToLive);
+                }
+                    //}
 
-                db.StringSet($"news:{newsId}", JsonConvert.SerializeObject(news), expiry: db.KeyTimeToLive($"news:{newsId}"));
-                //}
 
                 await _neo4j.Cypher
                     .Match("(n:News), (u:User)")

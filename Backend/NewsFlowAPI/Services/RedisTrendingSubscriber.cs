@@ -82,7 +82,8 @@ namespace NewsFlowAPI.Services
                         newsObject.ViewsLastPeriod = newsObject.ViewsCount;
                         List<News> newsList = new List<News>();
                         newsList.Add(newsObject);
-                        db.StringSet($"news:{newsObject.Id}", JsonConvert.SerializeObject(newsList));
+                        db.StringSet($"news:{newsObject.Id}", JsonConvert.SerializeObject(newsList),expiry:TimeSpan.FromHours(2));
+                        db.StringSet($"shadow:news:{id}", "shadow", expiry: TimeSpan.FromHours(0.95 * 2));
                     }
                 }
                 await db.SortedSetRemoveRangeByScoreAsync("trending:news:", Int32.MinValue, 0);
