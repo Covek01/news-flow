@@ -34,6 +34,14 @@ const Bar: React.FC = () => {
         navigate("/writenews")
     }
 
+    const handleClickSignIn=()=>{
+        navigate("/signin");
+    }
+    
+    const handleClickSignUp=()=>{
+        navigate("/signup");
+    }
+
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const open = Boolean(anchorEl);
     const handleAvatarClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -43,7 +51,7 @@ const Bar: React.FC = () => {
         setAnchorEl(null);
     };
 
-    const handleLogout=()=>{
+    const handleLogout = () => {
         setAnchorEl(null);
         signout();
     }
@@ -65,7 +73,7 @@ const Bar: React.FC = () => {
                         >
                             News Flow
                         </Typography>
-                        <Search style={{ width: '60%' }}>
+                        {isAuthenticated()&& <Search style={{ width: '60%' }}>
                             <SearchIconWrapper>
                                 <SearchIcon />
                             </SearchIconWrapper>
@@ -73,56 +81,67 @@ const Bar: React.FC = () => {
                                 placeholder="Search…"
                                 inputProps={{ 'aria-label': 'search' }}
                             />
-                        </Search>
+                        </Search>}
                     </Box>
                     <Box sx={{ flexGrow: 1 }} />
                     <Box sx={{ display: 'flex', alignItems: 'center' /*{ xs: 'none', sm: 'block' }*/ }}>
-                        {amIAuthor ?
-                            <IconButton color="inherit" onClick={handleWriteNews}
-                                style={{ borderRadius: '10%', backgroundColor: theme.palette.primary.dark }}>
-                                <NoteAddIcon />
-                                <Typography sx={{ fontWeight: 'bold' }} textAlign="center">WRITE</Typography>
-                            </IconButton> : <></>
+                        {isAuthenticated() ? <>
+                            {amIAuthor ?
+                                <IconButton color="inherit" onClick={handleWriteNews}
+                                    style={{ borderRadius: '10%', backgroundColor: theme.palette.primary.dark }}>
+                                    <NoteAddIcon />
+                                    <Typography sx={{ fontWeight: 'bold' }} textAlign="center">WRITE</Typography>
+                                </IconButton> : <></>
+                            }
+                            <Button color="inherit" onClick={handleClickNewest}>
+                                <Typography sx={{ fontWeight: 'bold' }} textAlign="center">Newest</Typography>
+                            </Button>
+                            <Button color="inherit" onClick={handleClickTrending}>
+                                <Typography sx={{ fontWeight: 'bold' }} textAlign="center">Trending</Typography>
+                            </Button>
+                            <Button color="inherit" onClick={handleClickPersonal}>
+                                <Typography sx={{ fontWeight: 'bold' }} textAlign="center">Personal</Typography>
+                            </Button>
+                            <Button
+                                id="basic-button"
+                                aria-controls={open ? 'basic-menu' : undefined}
+                                aria-haspopup="true"
+                                aria-expanded={open ? 'true' : undefined}
+                                onClick={handleAvatarClick}
+                            >
+                                <Avatar
+                                    alt={user?.name ?? "User Name"}
+                                    src={
+                                        user?.imageUrl && user?.imageUrl?.length > 0
+                                            ? user?.imageUrl.replace(
+                                                "background=311b92",
+                                                "background=fdd835"
+                                            )
+                                            : "https://ui-avatars.com/api/?background=311b92&color=fff&name=N+F&rounded=true"
+                                    }
+                                />
+                            </Button>
+                            <Menu
+                                id="basic-menu"
+                                anchorEl={anchorEl}
+                                open={open}
+                                onClose={handleMenuClose}
+                                MenuListProps={{
+                                    'aria-labelledby': 'basic-button',
+                                }}
+                            >
+                                <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                            </Menu>
+                        </>
+                            : <>
+                                <Button color="inherit" onClick={handleClickSignIn}>
+                                    <Typography sx={{ fontWeight: 'bold' }} textAlign="center">SignIn</Typography>
+                                </Button>
+                                <Button color="inherit" onClick={handleClickSignUp}>
+                                    <Typography sx={{ fontWeight: 'bold' }} textAlign="center">SignUp</Typography>
+                                </Button>
+                            </>
                         }
-                        <Button color="inherit" onClick={handleClickNewest}>
-                            <Typography sx={{ fontWeight: 'bold' }} textAlign="center">Newest</Typography>
-                        </Button>
-                        <Button color="inherit" onClick={handleClickTrending}>
-                            <Typography sx={{ fontWeight: 'bold' }} textAlign="center">Trending</Typography>
-                        </Button>
-                        <Button color="inherit" onClick={handleClickPersonal}>
-                            <Typography sx={{ fontWeight: 'bold' }} textAlign="center">Personal</Typography>
-                        </Button>
-                        <Button
-                            id="basic-button"
-                            aria-controls={open ? 'basic-menu' : undefined}
-                            aria-haspopup="true"
-                            aria-expanded={open ? 'true' : undefined}
-                            onClick={handleAvatarClick}
-                        >
-                            <Avatar
-                                alt={user?.name ?? "User Name"}
-                                src={
-                                    user?.imageUrl && user?.imageUrl?.length > 0
-                                        ? user?.imageUrl.replace(
-                                            "background=311b92",
-                                            "background=fdd835"
-                                        )
-                                        : "https://ui-avatars.com/api/?background=311b92&color=fff&name=N+F&rounded=true"
-                                }
-                            />
-                        </Button>
-                        <Menu
-                            id="basic-menu"
-                            anchorEl={anchorEl}
-                            open={open}
-                            onClose={handleMenuClose}
-                            MenuListProps={{
-                                'aria-labelledby': 'basic-button',
-                            }}
-                        >
-                            <MenuItem onClick={handleLogout}>Logout</MenuItem>
-                        </Menu>
                     </Box>
                 </Toolbar>
             </AppBar>
