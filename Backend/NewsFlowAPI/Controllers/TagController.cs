@@ -32,7 +32,7 @@ namespace NewsFlowAPI.Controllers
             _configuration = configuration;
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpPost("create/{name}")]
         public async Task<ActionResult> CreateTag([FromRoute] string name)
         {
@@ -53,7 +53,7 @@ namespace NewsFlowAPI.Controllers
 
             return Ok("Tag successfully added!");
         }
-        //[Authorize]
+        [Authorize]
         [HttpDelete("delete/{id}")]
         public async Task<ActionResult> DeleteTag([FromRoute] long id)
         {
@@ -89,7 +89,7 @@ namespace NewsFlowAPI.Controllers
             return Ok("Tag deleted");
 
         }
-        //[Authorize]
+        [Authorize]
         [HttpPut("update/{id}")]
         public async Task<ActionResult> UpdateTag([FromRoute] long id, [FromQuery] string name)
         {
@@ -127,7 +127,7 @@ namespace NewsFlowAPI.Controllers
             return Ok("Tag updated");
         }
 
-        //[Authorize(Roles ="writer")]
+        [Authorize]
         [HttpGet("get/{id}")]
         public async Task<ActionResult> GetTag([FromRoute] long id)
         {
@@ -148,7 +148,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(tag.ToList()[0].Name);
         }
 
-        //[Authorize(Roles ="writer")]
+        [Authorize]
         [HttpGet("getAllTags")]
         public async Task<ActionResult> GetAllTags()
         {
@@ -164,6 +164,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(tag);
         }
 
+        [Authorize]
         [HttpGet("getByName/{name}")]
         public async Task<ActionResult> GetTagByName([FromRoute] string name)
         {
@@ -199,7 +200,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(tagsMatched);
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("GetTags/{id}")]
         public async Task<ActionResult> GetTagsForUser([FromRoute] int id)
         {
@@ -211,7 +212,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(tags);
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("GetMyTags")]
         public async Task<ActionResult> GetMyTags()
         {
@@ -231,14 +232,14 @@ namespace NewsFlowAPI.Controllers
             return Ok(tags);
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("LikeTagFromNews/{newsId}")]
         public async Task<ActionResult> LikeTagsFromNews([FromRoute] long newsId)
         {
             var claims = HttpContext.User.Claims;
 
             var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-            userId = 6;
+            //userId = 6;
 
             if (userId == -1)
                 return Unauthorized("Error user not signed in");
@@ -359,6 +360,7 @@ namespace NewsFlowAPI.Controllers
 
         }
 
+        [Authorize]
         [HttpGet("getTagsByPrefix/{prefix}")]
         public async Task<ActionResult> GetAllTagsByPrefix([FromRoute] string prefix)
         {

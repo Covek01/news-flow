@@ -17,6 +17,7 @@ import { SignIn } from "./components/SignIn/SignIn";
 import NotAuthenticatedGuard from "./components/RouteGuards/NotAuthenticatedGuard";
 import WriteNews from "./components/writenews/WriteNews";
 import LandingPage from "./components/landingpage/LandingPage";
+import NotFound from "./components/NotFound/notfound";
 
 
 function App() {
@@ -35,6 +36,8 @@ function App() {
                         <Route path="/personal" element={<NotAuthenticatedGuard>{<Personal />}</NotAuthenticatedGuard>}></Route>
                         <Route path="/writenews" element={<NotAuthenticatedGuard>{<WriteNews />}</NotAuthenticatedGuard>}></Route>
                         <Route path="/landing" element={<LandingPage />}></Route>
+                        <Route path="/notfound" element={<NotFound />}></Route>
+
                         <Route
                             path="/signin"
                             element={<AuthenticatedGuard>{<SignIn />}</AuthenticatedGuard>}

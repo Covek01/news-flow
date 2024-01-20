@@ -97,7 +97,7 @@ class TagService  {
 
     public async LikeTagsFromNews(id:Number){
         try{
-            const {data,status}=await api.put(`LikeTagFromNews/${id}`);
+            const {data,status}=await api.put(`tag/LikeTagFromNews/${id}`);
 
             return data
         }catch(error){

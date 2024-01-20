@@ -79,7 +79,7 @@ namespace NewsFlowAPI.Controllers
         {
             return View();
         }
-
+        [Authorize]
         [HttpPost("news/createnews")]
         public async Task<ActionResult> CreateNews([FromBody] NewsCreateDTO data)
         {
@@ -202,6 +202,7 @@ namespace NewsFlowAPI.Controllers
                 return StatusCode(500, e);
             }
         }
+        [Authorize]
         [HttpPost("news/CreateNews2")]
         public async Task<ActionResult> CreateNews2([FromBody] NewsCreateDTO data)
         {
@@ -309,6 +310,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
+        [Authorize]
         [HttpGet("news/getAllNews")]
         public async Task<ActionResult> GetAllNews()
         {
@@ -327,6 +329,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
+        [Authorize]
         [HttpDelete("news/deleteNewsById/{id}")]
         public async Task<ActionResult> DeleteNewsById([FromRoute] int id)
         {
@@ -371,6 +374,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
+        [Authorize]
         [HttpDelete("news/deleteAllNews")]
         public async Task<ActionResult> DeleteAllNews()
         {
@@ -389,6 +393,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
+        [Authorize]
         [HttpGet("news/getNewsByAuthor/{authorName}")]
         public async Task<ActionResult> GetNewsByAuthor([FromRoute] string authorName)
         {
@@ -409,6 +414,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
+        [Authorize]
         [HttpGet("news/getNewsById/{id}")]
         public async Task<ActionResult> GetNewsById([FromRoute] long id)
         {
@@ -460,7 +466,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
-
+        [Authorize]
         [HttpGet("news/getNewestNews")]
         public async Task<ActionResult> GetNewestNews()
         {
@@ -511,7 +517,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
-
+        [Authorize]
         [HttpGet("news/getNewestNews2")]
         public async Task<ActionResult> GetNewestNews2()
         {
@@ -552,7 +558,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
-
+        [Authorize]
         [HttpPost("news/getNewestNewsFiltered2")]
         public async Task<ActionResult> GetNewestNewsFiltered2([FromBody] NewsFilterDTO filter)
         {
@@ -683,7 +689,7 @@ namespace NewsFlowAPI.Controllers
         }
 
 
-
+        [Authorize]
         [HttpPost("news/getNewestNewsFiltered")]
         public async Task<ActionResult> GetNewestNews2([FromBody] NewsFilterDTO filter)
         {
@@ -739,7 +745,7 @@ namespace NewsFlowAPI.Controllers
 
 
 
-
+        [Authorize]
         [HttpGet("news/isNewsLikedByUser/{userId}/{newsId}")]
         public async Task<ActionResult> IsNewsLikedByUser([FromRoute] long userId, [FromRoute] long newsId)
         {
@@ -763,7 +769,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
-
+        [Authorize]
         [HttpPost("news/geteNewsByTags")]
         public async Task<ActionResult> GetNewsByTags([FromBody] List<long> tagIds)
         {
@@ -798,7 +804,7 @@ namespace NewsFlowAPI.Controllers
 
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("news/ClickNews2/{id}")]
         public async Task<ActionResult> ClickNewsId2([FromRoute] long id)
         {
@@ -835,7 +841,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(news);
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("news/GetTrending2")]
         public async Task<ActionResult> GetTrending2()
         {
@@ -961,53 +967,6 @@ namespace NewsFlowAPI.Controllers
         }
 
 
-        ////[Authorize]
-        //[HttpGet("GetTrending")]
-        //public async Task<ActionResult> GetTrending()
-        //{
-        //    var db = _redis.GetDatabase();
-        //    var trending = db.StringGet("trending:news:");
-        //    if (string.IsNullOrEmpty(trending))
-        //    {
-        //        string pattern = "news:*";
-        //        List<string> keysList = new List<string>();
-        //        var cursor = default(long);
-        //        do
-        //        {
-        //            var result = db.Execute("SCAN", cursor.ToString(), "MATCH", pattern, "COUNT", "20");
-        //            var innerResult = (RedisResult[])result;
-
-        //            cursor = long.Parse((string)innerResult[0]);
-
-        //            var keys = (string[])innerResult[1];
-
-        //            foreach (var key in keys)
-        //            {
-        //                keysList.Add(key);
-        //            }
-        //        } while (cursor != 0);
-
-        //        List<News> newsList = new List<News>();
-
-        //        foreach (var key in keysList)
-        //        {
-        //            var news = db.StringGet(key).ToString();
-        //            var newsObject = JsonConvert.DeserializeObject<News>(news);
-        //            newsList.Add(newsObject);
-        //        }
-
-        //        newsList.Sort(delegate (News n2, News n1) { return (n1.ViewsLastPeriod + n1.LikeCount / 3 - n2.ViewsLastPeriod - n2.LikeCount / 3); });
-        //        db.StringSet("trending:news:", JsonConvert.SerializeObject(newsList.Take(10)), expiry: TimeSpan.FromHours(2));
-        //        return Ok(newsList.Take(10));
-
-        //    }
-        //    else
-        //    {
-        //        var trendingList = JsonConvert.DeserializeObject<List<News>>(trending);
-        //        return Ok(trendingList.Take(10));
-        //    }
-        //}
-
 
 
 
@@ -1076,8 +1035,10 @@ namespace NewsFlowAPI.Controllers
 
             return Ok(newsObject);
         }
-        //[Authorize]
+
+        [Authorize]
         [HttpPut("LikeNews/{id}")]
+        //like news and set like relations se koristi
         public async Task<ActionResult> LikeNews([FromRoute] long id)
         {
             try
@@ -1114,7 +1075,7 @@ namespace NewsFlowAPI.Controllers
 
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("news/DislikeNews/{userId}/{newsId}")]
         public async Task<ActionResult> DislikeNews([FromRoute] long userId, [FromRoute] long newsId)
         {
@@ -1166,7 +1127,7 @@ namespace NewsFlowAPI.Controllers
 
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("news/LikeNewsAndSetLikedRelation/{userId}/{newsId}")]
         public async Task<ActionResult> LikeNewsAndSetLikedRelation([FromRoute] long userId, [FromRoute] long newsId)
         {
@@ -1235,14 +1196,14 @@ namespace NewsFlowAPI.Controllers
 
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("news/GetForYou")]
         public async Task<ActionResult>GetForYou()
         {
             var claims = HttpContext.User.Claims;
 
             var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-            userId = 6;
+            //userId = 6;
 
             if (userId == -1)
                 return Unauthorized("Error user not signed in");
@@ -1351,7 +1312,7 @@ namespace NewsFlowAPI.Controllers
         }
 
 
-        //[Authorize]
+        [Authorize]
         [HttpPost("news/SeenNews")]
         public async Task<ActionResult> SeenNews([FromQuery] double userId, [FromQuery] double newsId)
         {

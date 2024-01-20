@@ -28,7 +28,7 @@ namespace NewsFlowAPI.Controllers
             _ids = ids;
             _cache = cache;
         }
-        //[Authorize]
+        [Authorize]
         [HttpPost("create/{name}")]
         public async Task<ActionResult> CreateLocation(
             [FromRoute] string name)
@@ -47,7 +47,7 @@ namespace NewsFlowAPI.Controllers
 
             return Ok("Location successfully added!");
         }
-        //[Authorize]
+        [Authorize]
         [HttpDelete("delete/{id}")]
         public async Task<ActionResult> DeleteLocation([FromRoute] long id)
         {
@@ -76,7 +76,7 @@ namespace NewsFlowAPI.Controllers
             return Ok("Location deleted");
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("update/{id}")]
         public async Task<ActionResult> UpdateLocation([FromRoute] long id, [FromQuery] string name)
         {
@@ -105,7 +105,7 @@ namespace NewsFlowAPI.Controllers
             return Ok("Location updated");
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("get/{id}")]
         public async Task<ActionResult> GetLocation([FromRoute] long id)
         {
@@ -126,7 +126,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(loc.ToList()[0].Name);
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("getByName/{name}")]
         public async Task<ActionResult> GetLocationByName([FromRoute] string name)
         {
@@ -148,7 +148,7 @@ namespace NewsFlowAPI.Controllers
         }
 
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("get")]
         public async Task<ActionResult> GetAllLocations()
         {
@@ -163,7 +163,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(loc.ToList());
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("getLocationsByPrefix/{prefix}")]
         public async Task<ActionResult> GetAllLocations([FromRoute] string prefix)
         {

@@ -265,7 +265,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(count);
         }
 
-
+        [Authorize]
         [HttpGet("search")]
         public async Task<ActionResult> Search([FromQuery] string name)
         {
@@ -286,6 +286,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(await query.ResultsAsync);
         }
 
+        [Authorize]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(long id)
         {
@@ -305,6 +306,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(baseQueryResult);
         }
 
+        [Authorize]
         [HttpGet("GetUserById/{id}")]
         public async Task<ActionResult> GetFullUserById(long id)
         {
@@ -378,7 +380,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(idsToDelete);
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("FollowTag")]
         public async Task<ActionResult> FollowTags([FromBody] List<long> tagIds)
         {
@@ -419,7 +421,7 @@ namespace NewsFlowAPI.Controllers
         }
 
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("UnfollowTag")]
         public async Task<ActionResult> UnfollowTags([FromBody] List<long> tagIds)
         {
@@ -441,7 +443,7 @@ namespace NewsFlowAPI.Controllers
             return Ok();
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("AddLocation")]
         public async Task<ActionResult> AddLocation([FromBody] List<long> locIds)
         {
@@ -479,7 +481,7 @@ namespace NewsFlowAPI.Controllers
         }
 
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("RemoveLocation")]
         public async Task<ActionResult> RemoveLocation([FromBody] List<long> locIds)
         {
@@ -500,8 +502,8 @@ namespace NewsFlowAPI.Controllers
 
             return Ok();
         }
-            //[Authorize]
-            [HttpPut("SubscribeTo")]
+        [Authorize]
+        [HttpPut("SubscribeTo")]
         public async Task<ActionResult> SubscribeTo([FromBody] List<long> userIds)
         {
             var claims=HttpContext.User.Claims;
@@ -538,7 +540,7 @@ namespace NewsFlowAPI.Controllers
 
 
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("UnsubscribeFrom")]
         public async Task<ActionResult> UnsubscribeFrom([FromBody] List<long> userIds)
         {
@@ -560,7 +562,7 @@ namespace NewsFlowAPI.Controllers
             return Ok();
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("UnsubscribeFrom2")]
         public async Task<ActionResult> UnsubscribeFrom2([FromBody] List<long> userIds)
         {
@@ -592,7 +594,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("DoUserFollowWriter/{userId}/{followedId}")]
         public async Task<ActionResult> DoUserFollowWriter([FromRoute] long userId, [FromRoute] long followedId)
         {
@@ -620,7 +622,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("DoIFollowHim/{followedId}")]
         public async Task<ActionResult> DoIFollowHim([FromRoute] long followedId)
         {
@@ -653,7 +655,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
         //edit user 
-        //[Authorize]
+        [Authorize]
         [HttpPut("UpdateUser/{id}")]
         public async Task<ActionResult> UpdateUser([FromRoute] long id, [FromBody] UserDTO editedUser)
         {
@@ -682,6 +684,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(u);
         }
 
+        [Authorize]
         [HttpGet("getWritersByPrefix/{prefix}")]
         public async Task<ActionResult> GetWritersByPrefix([FromRoute] string prefix)
         {
@@ -698,6 +701,7 @@ namespace NewsFlowAPI.Controllers
             return Ok(loc.ToList());
         }
 
+        [Authorize]
         [HttpGet("getWriterByName/{name}")]
         public async Task<ActionResult> GetWriterByName([FromRoute] string name)
         {
