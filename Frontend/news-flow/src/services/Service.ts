@@ -1,9 +1,10 @@
 import axios from "axios"
 import { lsGetSession } from "../utils/helpers";
+import { error } from "console";
 
-export const constants={
-  apiName:`https://localhost:7005`,
-  newsUploadName:``
+export const constants = {
+  apiName: `https://localhost:7005`,
+  newsUploadName: `https://localhost:7247`
 };
 
 const axiosInstace = axios.create({
@@ -35,6 +36,20 @@ axiosInstace.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+axiosInstance2.interceptors.request.use(
+  (config) => {
+    let session = lsGetSession();
+    if (session) {
+      config["headers"] = config.headers ?? {};
+      config.headers["Authorization"] = `SessionId ${session.id}`;
+      console.log("interceptor");
+    }
+    return config;
+  }, (error) => {
     return Promise.reject(error);
   }
 );

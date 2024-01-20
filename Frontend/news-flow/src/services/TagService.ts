@@ -94,6 +94,23 @@ class TagService  {
             }
         }
     }
+
+    public async LikeTagsFromNews(id:Number){
+        try{
+            const {data,status}=await api.put(`LikeTagFromNews/${id}`);
+
+            return data
+        }catch(error){
+            if(axios.isAxiosError(error)){
+                console.log(`error message: `, error.message);
+
+                return;
+            }else {
+                console.log(`unexpected error: `,error);
+                return ;
+            }
+        }
+    }
 }
 
 export default new TagService
