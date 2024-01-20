@@ -6,19 +6,29 @@
 
   
 Neki od registrovanih naloga:
+
 email:aleksandarstojkovic@elfak.rs 
+
 passoword:Test123 
+
 role:User 
+
 
 
 email:aleksandarstojkovic2001@gmail.com 
+
 password:Test123 
+
 role:User 
 
 
+
 email:nikola.stojiljkovic@elfak.rs 
+
 password:Test123 
+
 role:Author 
+
 
 
 
