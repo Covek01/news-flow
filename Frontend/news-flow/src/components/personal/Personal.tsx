@@ -34,7 +34,7 @@ const Personal: React.FC = () => {
                     (x as News).authorId,
                     (x as News).viewsCount,
                     (x as News).likeCount,
-                    (x as News).date
+                    (x as News).postTime
                     )
         })
         setNewsToShow(newsObject)     
