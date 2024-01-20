@@ -1,6 +1,0 @@
-@NewsFlow.Server_HostAddress = http://localhost:5070
-
-GET {{NewsFlow.Server_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
