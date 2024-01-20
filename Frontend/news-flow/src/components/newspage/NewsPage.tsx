@@ -40,7 +40,7 @@ const NewsPage: React.FC<props> = (
         if (isLikedByMe){
             const oldCount = likedCount
             setIsLikedByMe(false)
-            setLikedCount(likedCount - 1)
+            setLikedCount(likedCount=>likedCount-1)
             const isOkay: boolean = await NewsService.DislikeNews(myid, newsId)
             if (!isOkay){
               setIsLikedByMe(true)
@@ -50,7 +50,7 @@ const NewsPage: React.FC<props> = (
           else{
             const oldCount = likedCount
             setIsLikedByMe(true)
-            setLikedCount(likedCount + 1)
+            setLikedCount(likedCount=>likedCount+1)
             const isOkay: boolean = await NewsService.LikeNews(myid, newsId)
             if (!isOkay){
               setIsLikedByMe(false)
@@ -71,22 +71,23 @@ const NewsPage: React.FC<props> = (
     const initializeInfo = async () => {
         const info = await NewsService.ClickNews(newsId)
         setNewsInfo(info[0]);
-        setLikedCount(newsInfo.likeCount)
+        // setLikedCount(newsInfo.likeCount)
         const user: UserWriter[] = await UserService.GetUserWriterById(info[0].authorId)
         if (user.length > 0){
             setWriterName(user[0].name)
         }
 
         
+      
+
+    }
+
+    const initializeLikeCount = async () => {
         const {data, status} = await NewsService.IsNewsLikedByUser(myid, newsId)
         if (status){
             setIsLikedByMe(data)
         }
 
-
-    }
-
-    const initializeLikeCount = async () => {
         setLikedCount(newsInfo.likeCount)
     }
 
@@ -144,7 +145,7 @@ const NewsPage: React.FC<props> = (
                         }}>
                     {(!isLikedByMe)? <ThumbUpOffAltIcon /> : <ThumbUpIcon />}
                     <Typography style={{color: theme.palette.primary.contrastText, marginRight: '5%',  marginLeft: '15%'}} variant="body2" component="div">
-                        {newsInfo.likeCount}
+                        {likedCount}
                     </Typography>
                     </IconButton>
                     <Stack direction="row">

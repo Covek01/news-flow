@@ -31,8 +31,8 @@ interface NewsCardProps {
 
 const NewsCard: React.FC<NewsCardProps> = ({
   id,
-  title,
   authorName,
+  title,
   imageUrl,
   likesCount,
   viewCount,

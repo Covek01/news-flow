@@ -562,20 +562,27 @@ namespace NewsFlowAPI.Controllers
         public async Task<ActionResult> GetTrending2()
         {
             var db = _redis.GetDatabase();
-            var trending = db.SortedSetRangeByRankAsync("trending:news:", 0, 9, Order.Descending).Result;
-            List<RedisValue> newsRedisValue = trending.ToList();
+            //var trending = db.SortedSetRangeByRankAsync("trending:news:", 0, 9, Order.Descending).Result;
+            //var trending = db.SortedSetRangeByScoreWithScoresAsync("trending:news", 1, Int32.MaxValue, order: Order.Descending, take: 10).Result;
+            var trending=db.SortedSetRangeByRankWithScoresAsync("trending:news:", 0, 9, Order.Descending).Result;
+
+            //List<RedisValue> newsRedisValue = trending.ToList();
+            var newsRedisValue = trending.ToList();
+
             List<News> newsObjects = new List<News>();
             if(newsRedisValue.Count > 0)
             {
                 foreach (var nId in newsRedisValue)
                 {
+                    if (nId.Score == 0) continue;
                     //newsObjects.Add(JsonConvert.DeserializeObject<News>(n.ToString()));
+                    var element = long.Parse(nId.Element);
                     var query = _neo4j.Cypher
                     .Match("(n:News)")
-                    .Where((News n) => n.Id == nId)
+                    .Where((News n) => n.Id == element)
                     .Return(n => n.As<News>())
                     .Limit(1);
-                    var news = (await _queryCache.QueryCacheNoAdd(query, $"news:{nId}"));
+                    var news = (await _queryCache.QueryCacheNoAdd(query, $"news:{element}"));
 
                     if (news.Count() == 0)
                     {
