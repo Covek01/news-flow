@@ -121,193 +121,238 @@ namespace NewsFlowAPI.Controllers
         [Route("VerifyUserEmail")]
         public async Task<ActionResult> VerifyUserEmail([FromQuery] String codeEncoded, [FromQuery] String email)
         {
-            if (String.IsNullOrEmpty(codeEncoded))
-                return BadRequest("Invalid verification code");
-
-            var result = await _neo4j.Cypher
-                .Match("(u:User)")
-                .Where((User u) => u.Email == email)
-                .Return(u => u.As<User>())
-                .ResultsAsync;
-
-            var user = result.FirstOrDefault();
-            if (user == null)
-                return BadRequest("No user account with given adress");
-
-            if (user.EmailConfirmed)
-                return BadRequest("Account already confirmed");
-
-            var codeDecodedBytes = WebEncoders.Base64UrlDecode(codeEncoded);
-            var codeDecoded = Encoding.UTF8.GetString(codeDecodedBytes);
-
-            var db = _redis.GetDatabase();
-            String? confirmationCode = db.StringGet(email);
-            if (confirmationCode == null)
-                return BadRequest("Error verifying user account, try again later!");
-
-            if (confirmationCode == codeEncoded)
+            try
             {
-                await _neo4j.Cypher
+                if (String.IsNullOrEmpty(codeEncoded))
+                    return BadRequest("Invalid verification code");
+
+                var result = await _neo4j.Cypher
                     .Match("(u:User)")
                     .Where((User u) => u.Email == email)
-                    .Set("u.EmailConfirmed = true")
                     .Return(u => u.As<User>())
-                    .ExecuteWithoutResultsAsync();
+                    .ResultsAsync;
 
-                await db.KeyDeleteAsync(email);
+                var user = result.FirstOrDefault();
+                if (user == null)
+                    return BadRequest("No user account with given adress");
 
-                await _neo4j.Cypher
-                    .Merge("(l:Location {Name:$locationName})")
-                    .OnCreate()
-                    .Set("l.Id=$locationId")
-                    .With("l")
-                    .Match("(u:User)")
-                    .Where((User u) => u.Id == user.Id)
-                    .Match("(l2:Location {Name:$World})")
-                    .Merge("(u)-[:FOLLOWS_LOCATION]->(l)")
-                    .Merge("(u)-[:FOLLOWS_LOCATION]->(l2)")
-                    .WithParams(new
-                    {
-                        locationName = user.City,
-                        locationId = await _ids.LocationNext(),
-                        World="World"
-                    })
-                    .ExecuteWithoutResultsAsync();
-                    
+                if (user.EmailConfirmed)
+                    return BadRequest("Account already confirmed");
+
+                var codeDecodedBytes = WebEncoders.Base64UrlDecode(codeEncoded);
+                var codeDecoded = Encoding.UTF8.GetString(codeDecodedBytes);
+
+                var db = _redis.GetDatabase();
+                String? confirmationCode = db.StringGet(email);
+                if (confirmationCode == null)
+                    return BadRequest("Error verifying user account, try again later!");
+
+                if (confirmationCode == codeEncoded)
+                {
+                    await _neo4j.Cypher
+                        .Match("(u:User)")
+                        .Where((User u) => u.Email == email)
+                        .Set("u.EmailConfirmed = true")
+                        .Return(u => u.As<User>())
+                        .ExecuteWithoutResultsAsync();
+
+                    await db.KeyDeleteAsync(email);
+
+                    await _neo4j.Cypher
+                        .Merge("(l:Location {Name:$locationName})")
+                        .OnCreate()
+                        .Set("l.Id=$locationId")
+                        .With("l")
+                        .Match("(u:User)")
+                        .Where((User u) => u.Id == user.Id)
+                        .Match("(l2:Location {Name:$World})")
+                        .Merge("(u)-[:FOLLOWS_LOCATION]->(l)")
+                        .Merge("(u)-[:FOLLOWS_LOCATION]->(l2)")
+                        .WithParams(new
+                        {
+                            locationName = user.City,
+                            locationId = await _ids.LocationNext(),
+                            World = "World"
+                        })
+                        .ExecuteWithoutResultsAsync();
 
 
-                return Ok("Account confirmed");
+
+                    return Ok("Account confirmed");
+                }
+
+                return BadRequest("Error verifying user account, try again later!");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
             }
 
-            return BadRequest("Error verifying user account, try again later!");
         }
 
         [HttpPost("signin")]
         public async Task<ActionResult> SignIn([FromBody] UserLoginDTO creds)
         {
-            var result = await _neo4j.Cypher
-                .Match("(u:User)")
-                .Where((User u) => u.Email == creds.Email)
-                .Return(u => u.As<User>())
-                .ResultsAsync;
-
-            var user = result.FirstOrDefault();
-
-            if (user == null ||
-                BCrypt.Net.BCrypt.Verify(creds.Password, user.PasswordHash) == false)
+            try
             {
-                return NotFound("User with given email or password does not exist");
-            }
+                var result = await _neo4j.Cypher
+                    .Match("(u:User)")
+                    .Where((User u) => u.Email == creds.Email)
+                    .Return(u => u.As<User>())
+                    .ResultsAsync;
 
-            var db = _redis.GetDatabase();
+                var user = result.FirstOrDefault();
 
-            string sessionId = new PasswordGenerator.Password(
-                includeLowercase: true,
-                includeUppercase: true,
-                passwordLength: 50,
-                includeSpecial: false,
-                includeNumeric: false).Next();
-
-            db.StringSet($"sessions:{sessionId}", JsonSerializer.Serialize(user), expiry: TimeSpan.FromHours(2));
-            db.SetAdd("users:authenticated", user.Id);
-            db.StringSet($"users:last_active:{user.Id}", DateTime.Now.ToString("ddMMyyyyHHmmss"), expiry: TimeSpan.FromHours(2));
-
-            return Ok(new
-            {
-                Session = new
+                if (user == null ||
+                    BCrypt.Net.BCrypt.Verify(creds.Password, user.PasswordHash) == false)
                 {
-                    Id = sessionId,
-                    Expires = DateTime.Now.ToLocalTime() + TimeSpan.FromHours(2)
-                },
-                User = user
-            });
+                    return NotFound("User with given email or password does not exist");
+                }
+
+                var db = _redis.GetDatabase();
+
+                string sessionId = new PasswordGenerator.Password(
+                    includeLowercase: true,
+                    includeUppercase: true,
+                    passwordLength: 50,
+                    includeSpecial: false,
+                    includeNumeric: false).Next();
+
+                db.StringSet($"sessions:{sessionId}", JsonSerializer.Serialize(user), expiry: TimeSpan.FromHours(2));
+                db.SetAdd("users:authenticated", user.Id);
+                db.StringSet($"users:last_active:{user.Id}", DateTime.Now.ToString("ddMMyyyyHHmmss"), expiry: TimeSpan.FromHours(2));
+
+                return Ok(new
+                {
+                    Session = new
+                    {
+                        Id = sessionId,
+                        Expires = DateTime.Now.ToLocalTime() + TimeSpan.FromHours(2)
+                    },
+                    User = user
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
         [Authorize]
         [HttpPut("signout")]
         public async Task<ActionResult> UserSignOut()
         {
-            var claims = HttpContext.User.Claims;
-            var sessionId = claims.Where(c => c.Type == "SessionId").FirstOrDefault()?.Value;
-            var userId = claims.FirstOrDefault(c => c.Type.Equals("Id"))?.Value;
+            try
+            {
+                var claims = HttpContext.User.Claims;
+                var sessionId = claims.Where(c => c.Type == "SessionId").FirstOrDefault()?.Value;
+                var userId = claims.FirstOrDefault(c => c.Type.Equals("Id"))?.Value;
 
-            var db = _redis.GetDatabase();
+                var db = _redis.GetDatabase();
 
-            await db.KeyDeleteAsync(sessionId);
-            await db.KeyDeleteAsync($"users:last_active:{userId}");
-            await db.SetRemoveAsync("users:authenticated", userId);
+                await db.KeyDeleteAsync(sessionId);
+                await db.KeyDeleteAsync($"users:last_active:{userId}");
+                await db.SetRemoveAsync("users:authenticated", userId);
 
-            return Ok("Signed out successfully");
+                return Ok("Signed out successfully");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
         [HttpGet("authcount")]
         public async Task<ActionResult> AuthenticatedUsersCount()
         {
-            var db = _redis.GetDatabase();
-
-            var count = 0;
-
-            var authenticatedUsers = (await db.SetMembersAsync("users:authenticated")).ToList();
-            foreach (var userId in authenticatedUsers)
+            try
             {
-                var timeActive = (await db.StringGetAsync($"users:last_active:{userId}")).ToString();
+                var db = _redis.GetDatabase();
 
-                if (string.IsNullOrEmpty(timeActive))
+                var count = 0;
+
+                var authenticatedUsers = (await db.SetMembersAsync("users:authenticated")).ToList();
+                foreach (var userId in authenticatedUsers)
                 {
-                    await db.SetRemoveAsync("users:authenticated", userId);
-                    continue;
+                    var timeActive = (await db.StringGetAsync($"users:last_active:{userId}")).ToString();
+
+                    if (string.IsNullOrEmpty(timeActive))
+                    {
+                        await db.SetRemoveAsync("users:authenticated", userId);
+                        continue;
+                    }
+
+                    var timeActiveDt = DateTime.ParseExact(timeActive, "ddMMyyyyHHmmss", null);
+                    if (DateTime.Now - timeActiveDt <= TimeSpan.FromMinutes(15))
+                    {
+                        count++;
+                    }
                 }
 
-                var timeActiveDt = DateTime.ParseExact(timeActive, "ddMMyyyyHHmmss", null);
-                if (DateTime.Now - timeActiveDt <= TimeSpan.FromMinutes(15))
-                {
-                    count++;
-                }
+                return Ok(count);
             }
-
-            return Ok(count);
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
-
+        [Authorize]
         [HttpGet("search")]
         public async Task<ActionResult> Search([FromQuery] string name)
         {
-            var query = _neo4j.Cypher
-                .Match("(u:User)")
-                .Where("u.Name =~ $query")
-                .OrWhere("u.Email =~ $query")
-                .WithParam("query", $"(?i).*{name ?? ""}.*")
-                .Return(u => new
-                {
-                    u.As<User>().Id,
-                    u.As<User>().Name,
-                    u.As<User>().Email,
-                    u.As<User>().ImageUrl
-                })
-                .Limit(5);
+            try
+            {
+                var query = _neo4j.Cypher
+                    .Match("(u:User)")
+                    .Where("u.Name =~ $query")
+                    .OrWhere("u.Email =~ $query")
+                    .WithParam("query", $"(?i).*{name ?? ""}.*")
+                    .Return(u => new
+                    {
+                        u.As<User>().Id,
+                        u.As<User>().Name,
+                        u.As<User>().Email,
+                        u.As<User>().ImageUrl
+                    })
+                    .Limit(5);
 
-            return Ok(await query.ResultsAsync);
+                return Ok(await query.ResultsAsync);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
+        [Authorize]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(long id)
         {
-            var userId = long.Parse(HttpContext.User.Claims.FirstOrDefault(c => c.Type.Equals("Id"))?.Value ?? "-1");
+            try
+            {
+                var userId = long.Parse(HttpContext.User.Claims.FirstOrDefault(c => c.Type.Equals("Id"))?.Value ?? "-1");
 
-            var baseQueryResult = await _neo4j.Cypher
-                .Match("(u:User)")
-                .Where((User u) => u.Id == id)
-                .Return(u => new
-                {
-                    u.As<User>().Id,
-                    u.As<User>().Name,
-                    u.As<User>().Email,
-                    u.As<User>().ImageUrl
-                }).ResultsAsync;
+                var baseQueryResult = await _neo4j.Cypher
+                    .Match("(u:User)")
+                    .Where((User u) => u.Id == id)
+                    .Return(u => new
+                    {
+                        u.As<User>().Id,
+                        u.As<User>().Name,
+                        u.As<User>().Email,
+                        u.As<User>().ImageUrl
+                    }).ResultsAsync;
 
-            return Ok(baseQueryResult);
+                return Ok(baseQueryResult);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
+        [Authorize]
         [HttpGet("GetUserById/{id}")]
         public async Task<ActionResult> GetFullUserById(long id)
         {
@@ -343,227 +388,277 @@ namespace NewsFlowAPI.Controllers
         [HttpDelete("DeleteExpiredConfirmation")]
         public async Task<ActionResult> DeleteUsersExpiredConfirmation()
         {
-            var unconfirmedUsers =await  _neo4j.Cypher
-                .Match("(u:User)")
-                .Where((User u) => u.EmailConfirmed == false)
-                .Return(u =>new
-                {
-                    u.As<User>().Id,
-                    u.As<User>().Email
-                })
-                .ResultsAsync;
-
-            var db = _redis.GetDatabase();
-            List<Task> deletes = new List<Task>();
-            List<long> idsToDelete = new List<long>();
-            foreach(var user in unconfirmedUsers)
-            {
-                String? temp = db.StringGet(user.Email);
-                if (temp == null)
-                {
-                    idsToDelete.Add(user.Id);
-                    deletes.Append(
-                        _neo4j.Cypher
-                        .Match("(u:User)")
-                        .Where((User u) => u.Id == user.Id)
-                        .Delete("u").ExecuteWithoutResultsAsync()
-                        );
-                }
-            }
             try
             {
-                Task.WaitAll(deletes.ToArray());
+                var unconfirmedUsers = await _neo4j.Cypher
+                    .Match("(u:User)")
+                    .Where((User u) => u.EmailConfirmed == false)
+                    .Return(u => new
+                    {
+                        u.As<User>().Id,
+                        u.As<User>().Email
+                    })
+                    .ResultsAsync;
+
+                var db = _redis.GetDatabase();
+                List<Task> deletes = new List<Task>();
+                List<long> idsToDelete = new List<long>();
+                foreach (var user in unconfirmedUsers)
+                {
+                    String? temp = db.StringGet(user.Email);
+                    if (temp == null)
+                    {
+                        idsToDelete.Add(user.Id);
+                        deletes.Append(
+                            _neo4j.Cypher
+                            .Match("(u:User)")
+                            .Where((User u) => u.Id == user.Id)
+                            .Delete("u").ExecuteWithoutResultsAsync()
+                            );
+                    }
+                }
+                try
+                {
+                    Task.WaitAll(deletes.ToArray());
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(ex.Message);
+                }
+                return Ok(idsToDelete);
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ex);
             }
-            return Ok(idsToDelete);
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("FollowTag")]
         public async Task<ActionResult> FollowTags([FromBody] List<long> tagIds)
         {
-            var claims=HttpContext.User.Claims;
-
-            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-            //userId = 1;
-
-            if (userId==-1)
-                return Unauthorized("Error user not signed in");
-
-            var existingTags = await _neo4j.Cypher
-                .Match("(t:Tag)<-[:FOLLOWS_TAG]-(u:User)")
-                .Where("t.Id IN $tagIds")
-                .AndWhere((User u)=>u.Id==userId)
-                .WithParam("tagIds", tagIds)
-                .Return(t => t.As<Tag>().Id)
-                .ResultsAsync;
-
-            //var existingTagIds = existingTags.Select(tag => tag.Id).ToList();
-            var newTagIds = tagIds.Except(existingTags).ToList();
-
-            foreach (var tagId in newTagIds)
+            try
             {
-                
-                await _neo4j.Cypher
-                    .Match("(u:User)", "(t:Tag)")
-                    .Where((User u) => u.Id == userId)
-                    .AndWhere((Tag t) => t.Id == tagId)
-                    .Create("(u)-[ft:FOLLOWS_TAG]->(t)")
-                    .Set("ft.LikeCount=$LikeCount, ft.InterestCoefficient=$Interest")
-                    //.WithParam("LikeCount", 1)
-                    .WithParams(new {LikeCount=0, Interest=1})
-                    .ExecuteWithoutResultsAsync();
-            }
 
-            return Ok(newTagIds.Count);
+                var claims = HttpContext.User.Claims;
+
+                var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+                //userId = 1;
+
+                if (userId == -1)
+                    return Unauthorized("Error user not signed in");
+
+                var existingTags = await _neo4j.Cypher
+                    .Match("(t:Tag)<-[:FOLLOWS_TAG]-(u:User)")
+                    .Where("t.Id IN $tagIds")
+                    .AndWhere((User u) => u.Id == userId)
+                    .WithParam("tagIds", tagIds)
+                    .Return(t => t.As<Tag>().Id)
+                    .ResultsAsync;
+
+                //var existingTagIds = existingTags.Select(tag => tag.Id).ToList();
+                var newTagIds = tagIds.Except(existingTags).ToList();
+
+                foreach (var tagId in newTagIds)
+                {
+
+                    await _neo4j.Cypher
+                        .Match("(u:User)", "(t:Tag)")
+                        .Where((User u) => u.Id == userId)
+                        .AndWhere((Tag t) => t.Id == tagId)
+                        .Create("(u)-[ft:FOLLOWS_TAG]->(t)")
+                        .Set("ft.LikeCount=$LikeCount, ft.InterestCoefficient=$Interest")
+                        //.WithParam("LikeCount", 1)
+                        .WithParams(new { LikeCount = 0, Interest = 1 })
+                        .ExecuteWithoutResultsAsync();
+                }
+
+                return Ok(newTagIds.Count);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("UnfollowTag")]
         public async Task<ActionResult> UnfollowTags([FromBody] List<long> tagIds)
         {
-            var claims = HttpContext.User.Claims;
+            try
+            {
+                var claims = HttpContext.User.Claims;
 
-            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+                var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
 
-            if (userId == -1)
-                return Unauthorized("Error user not signed in");
+                if (userId == -1)
+                    return Unauthorized("Error user not signed in");
 
-             await _neo4j.Cypher
-                .Match("(t:Tag)<-[ft:FOLLOWS_TAG]-(u:User)")
-                .Where("t.Id IN $tagIds")
-                .AndWhere((User u) => u.Id == userId)
-                .WithParam("tagIds", tagIds)
-                .Delete("ft")
-                .ExecuteWithoutResultsAsync();
-          
-            return Ok();
+                await _neo4j.Cypher
+                   .Match("(t:Tag)<-[ft:FOLLOWS_TAG]-(u:User)")
+                   .Where("t.Id IN $tagIds")
+                   .AndWhere((User u) => u.Id == userId)
+                   .WithParam("tagIds", tagIds)
+                   .Delete("ft")
+                   .ExecuteWithoutResultsAsync();
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("AddLocation")]
         public async Task<ActionResult> AddLocation([FromBody] List<long> locIds)
         {
-            var claims = HttpContext.User.Claims;
-
-            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-
-
-            if (userId == -1)
-                return Unauthorized("Error user not signed in");
-
-            var existingLocations = await _neo4j.Cypher
-                .Match("(l:Location)<-[:FOLLOWS_LOCATION]-(u:User)")
-                .Where("l.Id IN $locIds")
-                .AndWhere((User u) => u.Id == userId)
-                .WithParam("locIds", locIds)
-                .Return(l => l.As<Location>().Id)
-                .ResultsAsync;
-
-            //var existingLocIds = existingLocations.Select(tag => tag.Id).ToList();
-            var newLocIds = locIds.Except(existingLocations).ToList();
-
-            foreach (var locId in newLocIds)
+            try
             {
+                var claims = HttpContext.User.Claims;
 
-                await _neo4j.Cypher
-                    .Match("(u:User)", "(l:Location)")
-                    .Where((User u) => u.Id == userId)
-                    .AndWhere((Location l) => l.Id == locId)
-                    .Create("(u)-[fl:FOLLOWS_LOCATION]->(l)")
-                    .ExecuteWithoutResultsAsync();
+                var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+
+
+                if (userId == -1)
+                    return Unauthorized("Error user not signed in");
+
+                var existingLocations = await _neo4j.Cypher
+                    .Match("(l:Location)<-[:FOLLOWS_LOCATION]-(u:User)")
+                    .Where("l.Id IN $locIds")
+                    .AndWhere((User u) => u.Id == userId)
+                    .WithParam("locIds", locIds)
+                    .Return(l => l.As<Location>().Id)
+                    .ResultsAsync;
+
+                //var existingLocIds = existingLocations.Select(tag => tag.Id).ToList();
+                var newLocIds = locIds.Except(existingLocations).ToList();
+
+                foreach (var locId in newLocIds)
+                {
+
+                    await _neo4j.Cypher
+                        .Match("(u:User)", "(l:Location)")
+                        .Where((User u) => u.Id == userId)
+                        .AndWhere((Location l) => l.Id == locId)
+                        .Create("(u)-[fl:FOLLOWS_LOCATION]->(l)")
+                        .ExecuteWithoutResultsAsync();
+                }
+
+                return Ok(newLocIds.Count);
+            }catch(Exception ex)
+            {
+                return BadRequest(ex);
             }
-
-            return Ok(newLocIds.Count);
         }
 
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("RemoveLocation")]
         public async Task<ActionResult> RemoveLocation([FromBody] List<long> locIds)
         {
-            var claims = HttpContext.User.Claims;
+            try
+            {
+                var claims = HttpContext.User.Claims;
 
-            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+                var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
 
-            if (userId == -1)
-                return Unauthorized("Error user not signed in");
+                if (userId == -1)
+                    return Unauthorized("Error user not signed in");
 
-            await _neo4j.Cypher
-                .Match("(l:Location)<-[fl:FOLLOWS_LOCATION]-(u:User)")
-                .Where("l.Id IN $locIds")
-                .AndWhere((User u) => u.Id == userId)
-                .WithParam("locIds", locIds)
-                .Delete("fl")
-                .ExecuteWithoutResultsAsync();
+                await _neo4j.Cypher
+                    .Match("(l:Location)<-[fl:FOLLOWS_LOCATION]-(u:User)")
+                    .Where("l.Id IN $locIds")
+                    .AndWhere((User u) => u.Id == userId)
+                    .WithParam("locIds", locIds)
+                    .Delete("fl")
+                    .ExecuteWithoutResultsAsync();
 
-            return Ok();
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
-            //[Authorize]
-            [HttpPut("SubscribeTo")]
+
+        [Authorize]
+        [HttpPut("SubscribeTo")]
         public async Task<ActionResult> SubscribeTo([FromBody] List<long> userIds)
         {
-            var claims=HttpContext.User.Claims;
-
-            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-
-            if (userId==-1)
-                return Unauthorized("Error user not signed in");
-
-            var alreadySubscribed = await _neo4j.Cypher
-                .Match("(u1:User)-[:SUBSCRIBED_TO]->(u2:User)")
-                .Where("u2.Id IN $userIds")
-                .AndWhere((User u1)=>u1.Id==userId)
-                .WithParam("userIds", userIds)
-                .Return(u2 => u2.As<User>().Id)
-                .ResultsAsync;
-
-            var newUserIds = userIds.Except(alreadySubscribed).ToList();
-
-            foreach (var uId in newUserIds)
+            try
             {
-                
-                await _neo4j.Cypher
-                    .Match("(u1:User)", "(u2:User)")
-                    .Where((User u1) => u1.Id == userId)
-                    .AndWhere((User u2)=>u2.Role=="Author")
-                    .AndWhere((User u2) => u2.Id == uId)
-                    .Create("(u1)-[:SUBSCRIBED_TO]->(u2)")
-                    .ExecuteWithoutResultsAsync();
-            }
+                var claims = HttpContext.User.Claims;
 
-            return Ok(newUserIds.Count);
+                var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+
+                if (userId == -1)
+                    return Unauthorized("Error user not signed in");
+
+                var alreadySubscribed = await _neo4j.Cypher
+                    .Match("(u1:User)-[:SUBSCRIBED_TO]->(u2:User)")
+                    .Where("u2.Id IN $userIds")
+                    .AndWhere((User u1) => u1.Id == userId)
+                    .WithParam("userIds", userIds)
+                    .Return(u2 => u2.As<User>().Id)
+                    .ResultsAsync;
+
+                var newUserIds = userIds.Except(alreadySubscribed).ToList();
+
+                foreach (var uId in newUserIds)
+                {
+
+                    await _neo4j.Cypher
+                        .Match("(u1:User)", "(u2:User)")
+                        .Where((User u1) => u1.Id == userId)
+                        .AndWhere((User u2) => u2.Role == "Author")
+                        .AndWhere((User u2) => u2.Id == uId)
+                        .Create("(u1)-[:SUBSCRIBED_TO]->(u2)")
+                        .ExecuteWithoutResultsAsync();
+                }
+
+                return Ok(newUserIds.Count);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
 
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("UnsubscribeFrom")]
         public async Task<ActionResult> UnsubscribeFrom([FromBody] List<long> userIds)
         {
-            var claims = HttpContext.User.Claims;
+            try
+            {
+                var claims = HttpContext.User.Claims;
 
-            var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+                var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
 
-            if (userId == -1)
-                return Unauthorized("Error user not signed in");
+                if (userId == -1)
+                    return Unauthorized("Error user not signed in");
 
-            await _neo4j.Cypher
-                .Match("(u1:User)-[st:SUBSCRIBED_TO]->(u2:User)")
-                .Where("u2.Id IN $userIds")
-                .AndWhere((User u1) => u1.Id == userId)
-                .WithParam("userIds", userIds)
-                .Delete("st")
-                .ExecuteWithoutResultsAsync();
+                await _neo4j.Cypher
+                    .Match("(u1:User)-[st:SUBSCRIBED_TO]->(u2:User)")
+                    .Where("u2.Id IN $userIds")
+                    .AndWhere((User u1) => u1.Id == userId)
+                    .WithParam("userIds", userIds)
+                    .Delete("st")
+                    .ExecuteWithoutResultsAsync();
 
-            return Ok();
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpPut("UnsubscribeFrom2")]
         public async Task<ActionResult> UnsubscribeFrom2([FromBody] List<long> userIds)
         {
@@ -595,7 +690,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("DoUserFollowWriter/{userId}/{followedId}")]
         public async Task<ActionResult> DoUserFollowWriter([FromRoute] long userId, [FromRoute] long followedId)
         {
@@ -623,7 +718,7 @@ namespace NewsFlowAPI.Controllers
             }
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("DoIFollowHim/{followedId}")]
         public async Task<ActionResult> DoIFollowHim([FromRoute] long followedId)
         {
@@ -656,64 +751,86 @@ namespace NewsFlowAPI.Controllers
             }
         }
         //edit user 
-        //[Authorize]
+        [Authorize]
         [HttpPut("UpdateUser/{id}")]
         public async Task<ActionResult> UpdateUser([FromRoute] long id, [FromBody] UserDTO editedUser)
         {
-            var user = await _neo4j.Cypher
-                .Match("(u:User)")
-                .Where((User u) => u.Id == id)
-                .Return(u => u.As<User>())
-                .ResultsAsync;
+            try
+            {
+                var user = await _neo4j.Cypher
+                    .Match("(u:User)")
+                    .Where((User u) => u.Id == id)
+                    .Return(u => u.As<User>())
+                    .ResultsAsync;
 
-            var u = user.ToList().First();
-            u.Name=editedUser.Name;
-            u.Email=editedUser.Email;
-            u.Phone = editedUser.Phone;
-            u.ImageUrl = editedUser.ImageUrl;
-            u.Country = editedUser.Country;
-            u.City = editedUser.City;
-            u.Role = editedUser.Role;
+                var u = user.ToList().First();
+                u.Name = editedUser.Name;
+                u.Email = editedUser.Email;
+                u.Phone = editedUser.Phone;
+                u.ImageUrl = editedUser.ImageUrl;
+                u.Country = editedUser.Country;
+                u.City = editedUser.City;
+                u.Role = editedUser.Role;
 
-            await _neo4j.Cypher
-                .Match("(uu:User)")
-                .Where((User uu) => uu.Id == id)
-                .Set("uu=$us")
-                .WithParam("us", u)
-                .ExecuteWithoutResultsAsync();
+                await _neo4j.Cypher
+                    .Match("(uu:User)")
+                    .Where((User uu) => uu.Id == id)
+                    .Set("uu=$us")
+                    .WithParam("us", u)
+                    .ExecuteWithoutResultsAsync();
 
-            return Ok(u);
+                return Ok(u);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
+        [Authorize]
         [HttpGet("getWritersByPrefix/{prefix}")]
         public async Task<ActionResult> GetWritersByPrefix([FromRoute] string prefix)
         {
-            var loc = await _neo4j.Cypher
-                .Match("(u:User)")
-                .Where($"u.Name starts with '{prefix}'")
-                .AndWhere((User u) => u.Role == "Author")
-                .Return(u => new AuthorInfoDTO
-                {
-                    Id = u.As<User>().Id,
-                    Name = u.As<User>().Name
-                })
-                .ResultsAsync;
-            return Ok(loc.ToList());
+            try
+            {
+                var loc = await _neo4j.Cypher
+                    .Match("(u:User)")
+                    .Where($"u.Name starts with '{prefix}'")
+                    .AndWhere((User u) => u.Role == "Author")
+                    .Return(u => new AuthorInfoDTO
+                    {
+                        Id = u.As<User>().Id,
+                        Name = u.As<User>().Name
+                    })
+                    .ResultsAsync;
+                return Ok(loc.ToList());
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
+        [Authorize]
         [HttpGet("getWriterByName/{name}")]
         public async Task<ActionResult> GetWriterByName([FromRoute] string name)
         {
-            var loc = await _neo4j.Cypher
-                .Match("(u:User)")
-                .Where((User u) => u.Name == name)
-                .Return(u => new AuthorInfoDTO
-                {
-                    Id = u.As<User>().Id,
-                    Name = u.As<User>().Name
-                })
-                .ResultsAsync;
-            return Ok(loc.ToList());
+            try
+            {
+                var loc = await _neo4j.Cypher
+                    .Match("(u:User)")
+                    .Where((User u) => u.Name == name)
+                    .Return(u => new AuthorInfoDTO
+                    {
+                        Id = u.As<User>().Id,
+                        Name = u.As<User>().Name
+                    })
+                    .ResultsAsync;
+                return Ok(loc.ToList());
+            }
+            catch (Exception ex) {
+                return BadRequest(ex);
+            }
         }
     }
 }

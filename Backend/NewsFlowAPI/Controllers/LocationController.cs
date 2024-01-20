@@ -31,11 +31,12 @@ namespace NewsFlowAPI.Controllers
             RedisNewestSubscriber sub = new RedisNewestSubscriber(_redis, _neo4j);
             sub.SubscribeToSmallApi();
         }
-        //[Authorize]
+        [Authorize]
         [HttpPost("create/{name}")]
         public async Task<ActionResult> CreateLocation(
             [FromRoute] string name)
         {
+            try { 
             var newLocation = new Location
             {
                 Id = await _ids.LocationNext(),
@@ -49,11 +50,18 @@ namespace NewsFlowAPI.Controllers
                 .ExecuteWithoutResultsAsync();
 
             return Ok("Location successfully added!");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
-        //[Authorize]
+        [Authorize]
         [HttpDelete("delete/{id}")]
+
         public async Task<ActionResult> DeleteLocation([FromRoute] long id)
         {
+            try { 
             var loc = await _neo4j.Cypher
                 .Match("(l:Location)")
                 .Where((Location l) => l.Id == id)
@@ -77,109 +85,151 @@ namespace NewsFlowAPI.Controllers
                 .ExecuteWithoutResultsAsync();
 
             return Ok("Location deleted");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
-        //[Authorize]
+
+        [Authorize]
         [HttpPut("update/{id}")]
         public async Task<ActionResult> UpdateLocation([FromRoute] long id, [FromQuery] string name)
         {
-            var loc= await _neo4j.Cypher
-                .Match("(l:Location)")
-                .Where((Location l) => l.Id == id)
-                .Return(l => new
-                {
-                    l.As<Location>().Id,
-                    l.As<Location>().Name
-                })
-                .Limit(1)
-                .ResultsAsync;
-
-            if (loc.Count() == 0)
+            try
             {
-                return NotFound($"Location with Id:{id} not found");
-            }
-            await _neo4j.Cypher
-                .Match("(l:Location)")
-                .Where((Location l) => l.Id == id)
-                .Set("l.Name=$name")
-                .WithParam("name", name)
-                .ExecuteWithoutResultsAsync();
+                var loc = await _neo4j.Cypher
+                    .Match("(l:Location)")
+                    .Where((Location l) => l.Id == id)
+                    .Return(l => new
+                    {
+                        l.As<Location>().Id,
+                        l.As<Location>().Name
+                    })
+                    .Limit(1)
+                    .ResultsAsync;
 
-            return Ok("Location updated");
+                if (loc.Count() == 0)
+                {
+                    return NotFound($"Location with Id:{id} not found");
+                }
+
+                await _neo4j.Cypher
+                    .Match("(l:Location)")
+                    .Where((Location l) => l.Id == id)
+                    .Set("l.Name=$name")
+                    .WithParam("name", name)
+                    .ExecuteWithoutResultsAsync();
+
+                return Ok("Location updated");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("get/{id}")]
         public async Task<ActionResult> GetLocation([FromRoute] long id)
         {
-            var loc = await _neo4j.Cypher
-                .Match("(l:Location)")
-                .Where((Location l) => l.Id == id)
-                .Return(l => new
-                {
-                    l.As<Location>().Id,
-                    l.As<Location>().Name
-                })
-                .ResultsAsync;
-
-            if (loc.Count() == 0)
+            try
             {
-                return NotFound($"Location with Id:{id} not found");
+                var loc = await _neo4j.Cypher
+                    .Match("(l:Location)")
+                    .Where((Location l) => l.Id == id)
+                    .Return(l => new
+                    {
+                        l.As<Location>().Id,
+                        l.As<Location>().Name
+                    })
+                    .ResultsAsync;
+
+                if (loc.Count() == 0)
+                {
+                    return NotFound($"Location with Id:{id} not found");
+                }
+                return Ok(loc.ToList()[0].Name);
             }
-            return Ok(loc.ToList()[0].Name);
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("getByName/{name}")]
         public async Task<ActionResult> GetLocationByName([FromRoute] string name)
         {
-            var loc = await _neo4j.Cypher
-                .Match("(l:Location)")
-                .Where((Location l) => l.Name == name)
-                .Return(l => new
-                {
-                    l.As<Location>().Id,
-                    l.As<Location>().Name
-                })
-                .ResultsAsync;
-
-            if (loc.Count() == 0)
+            try
             {
-                return NotFound($"Location with name: ${name} not found");
+                var loc = await _neo4j.Cypher
+                    .Match("(l:Location)")
+                    .Where((Location l) => l.Name == name)
+                    .Return(l => new
+                    {
+                        l.As<Location>().Id,
+                        l.As<Location>().Name
+                    })
+                    .ResultsAsync;
+
+                if (loc.Count() == 0)
+                {
+                    return NotFound($"Location with name: ${name} not found");
+                }
+                return Ok(loc.ToList()[0]);
             }
-            return Ok(loc.ToList()[0]);
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("get")]
         public async Task<ActionResult> GetAllLocations()
         {
-            var loc = await _neo4j.Cypher
-                .Match("(l:Location)")
-                .Return(l => new
-                {
-                    l.As<Location>().Id,
-                    l.As<Location>().Name
-                })
-                .ResultsAsync;
-            return Ok(loc.ToList());
+            try
+            {
+                var loc = await _neo4j.Cypher
+                    .Match("(l:Location)")
+                    .Return(l => new
+                    {
+                        l.As<Location>().Id,
+                        l.As<Location>().Name
+                    })
+                    .ResultsAsync;
+                return Ok(loc.ToList());
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpGet("getLocationsByPrefix/{prefix}")]
         public async Task<ActionResult> GetAllLocations([FromRoute] string prefix)
         {
-            var loc = await _neo4j.Cypher
-                .Match("(l:Location)")
-                .Where($"l.Name starts with '{prefix}'")
-                .Return(l => new AuthorInfoDTO
-                {
-                    Id = l.As<Location>().Id,
-                    Name = l.As<Location>().Name
-                })
-                .ResultsAsync;
-            return Ok(loc.ToList());
+            try
+            {
+                var loc = await _neo4j.Cypher
+                    .Match("(l:Location)")
+                    .Where($"l.Name starts with '{prefix}'")
+                    .Return(l => new AuthorInfoDTO
+                    {
+                        Id = l.As<Location>().Id,
+                        Name = l.As<Location>().Name
+                    })
+                    .ResultsAsync;
+                return Ok(loc.ToList());
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
     }

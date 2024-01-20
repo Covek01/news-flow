@@ -17,6 +17,7 @@ import CardActionArea from '@mui/material';
 import { TheaterComedySharp } from '@mui/icons-material';
 import { useAuthContext } from '../../contexts/auth.context';
 import { ClassNames } from '@emotion/react';
+import TagService from '../../services/TagService';
 
 
 interface NewsCardProps {
@@ -71,6 +72,8 @@ const NewsCard: React.FC<NewsCardProps> = ({
       setIsLikedByMe(true)
       setLikedCount(likedCount + 1)
       const isOkay: boolean = await NewsService.LikeNews(myid, id)
+      await TagService.LikeTagsFromNews(id);
+
       if (!isOkay) {
         setIsLikedByMe(false)
         setLikedCount(oldCount)
