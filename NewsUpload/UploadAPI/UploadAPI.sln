@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UploadAPI", "UploadAPI.csproj", "{F09873EE-EDE8-4F5D-AB30-FDF30DFCC83E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F09873EE-EDE8-4F5D-AB30-FDF30DFCC83E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F09873EE-EDE8-4F5D-AB30-FDF30DFCC83E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F09873EE-EDE8-4F5D-AB30-FDF30DFCC83E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F09873EE-EDE8-4F5D-AB30-FDF30DFCC83E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {64EEA568-8EDC-427F-9357-648A8F50AB0A}
+	EndGlobalSection
+EndGlobal
