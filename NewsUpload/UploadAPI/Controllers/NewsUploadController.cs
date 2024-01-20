@@ -17,7 +17,6 @@ namespace UploadAPI.Controllers
         private readonly string _newestNewsKey;
         private readonly string _channelForNewestNews;
 
-
         public NewsUploadController(
             IConnectionMultiplexer redis,
             IBoltGraphClient neo4j,
