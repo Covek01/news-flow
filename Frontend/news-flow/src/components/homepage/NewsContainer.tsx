@@ -25,7 +25,7 @@ const NewsContainer: React.FC<NewsContainerProps> = ({newsList}) => {
                     imageUrl={newsItem.imageUrl}
                     likesCount={newsItem.likeCount}
                     viewCount={newsItem.viewsCount}
-                    datetimePosted={newsItem.date}
+                    datetimePosted={newsItem.postTime}
                     />
             ))}
             </Box>
