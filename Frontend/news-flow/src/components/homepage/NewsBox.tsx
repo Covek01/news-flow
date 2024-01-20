@@ -46,7 +46,8 @@ const NewsCard: React.FC<NewsCardProps> = ({
   const { isAuthenticated, signout, user } = useAuthContext();
   const myid = user ? user.id : -1//ovde se menja nakon auth
   const [isLikedByMe, setIsLikedByMe] = useState<boolean>(false)
-  const [likedCount, setLikedCount] = useState<number>(likesCount)
+  const [likedCount, setLikedCount] = useState<number>(0)
+  const [viewsCount, setViewsCount] = useState<number>(0)
   const [isHovered, setIsHovered] = useState<boolean>(false)
   let navigate = useNavigate()
 
@@ -103,8 +104,13 @@ const NewsCard: React.FC<NewsCardProps> = ({
   }
 
   useEffect(() => {
-    console.log(`id:${id}\title:${title}\nLikes count:${likesCount}`)
+    setLikedCount(likesCount)
+    setViewsCount(viewCount)
     initialSetIsLiked()
+    setTimeout(() => {
+      console.log(`Image url is ${imageUrl}`)
+    }, 3000)
+
   }, [])
 
 

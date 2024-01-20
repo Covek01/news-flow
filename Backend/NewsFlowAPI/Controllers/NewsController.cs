@@ -19,6 +19,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration.UserSecrets;
+using System.Net.WebSockets;
 
 
 namespace NewsFlowAPI.Controllers
@@ -193,6 +194,112 @@ namespace NewsFlowAPI.Controllers
                 db.ListLeftPush(_newestNewsKey, newsForRedisJson);
 
                 await db.PublishAsync(_channelForNewestNews, newsForRedisJson);
+
+                return Ok(news);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e);
+            }
+        }
+        [HttpPost("news/CreateNews2")]
+        public async Task<ActionResult> CreateNews2([FromBody] NewsCreateDTO data)
+        {
+            try
+            {
+
+                //News node
+                News news = new News
+                {
+                    Id = await _ids.NewsNext(),
+                    Title = data.Title,
+                    Summary = data.Summary,
+                    Text = data.Text,
+                    ImageUrl = data.ImageUrl,
+                    AuthorId = data.authorId,
+                    LocationId = data.locationId,
+                    LikeCount = 0,
+                    ViewsCount = 0
+                };
+
+                news.PostTime = DateTime.Now;
+
+
+
+                //tags nodes
+                /*   var tags = await _neo4j.Cypher
+                       .Match("(t:Tag)")
+                       .Where((Tag t) => data.tagsIds.Contains(t.Id))
+                       .Return(t => t.As<Tag>())
+                       .ResultsAsync;
+                   var tagsList = tags.ToList();*/
+
+                var tags = await _neo4j.Cypher
+                    .Match("(t:Tag)")
+                    .Where("any(tagId IN $tagsIds WHERE tagId = t.Id)")
+                    .WithParam("tagsIds", data.tagsIds)
+                    .Return(t => t.As<Tag>().Id)
+                    .ResultsAsync;
+
+                if (tags.Count() == 0)
+                {
+                    throw new Exception("THERE ISN'T ANY TAG");
+                }
+
+                var authorList = await _neo4j.Cypher
+                   .Match("(u:User)")
+                   .Where((User u) => u.Id == data.authorId && u.Role == "Author")
+                   .Return(u => u.As<User>().Id)
+                   .ResultsAsync;
+
+                if (authorList.Count() == 0)
+                {
+                    throw new Exception("THERE ISN'T ANY AUTHOR WITH THAT ID");
+                }
+
+
+                await _neo4j.Cypher
+                 .Create("(n:News $news)")
+                 .WithParam("news", news)
+                 .ExecuteWithoutResultsAsync();
+
+
+                //tagovi
+                await _neo4j.Cypher
+                 .Match("(n:News), (t:Tag)")
+                 .Where("any(tagId IN $tagsIds WHERE tagId = t.Id)")
+                 .AndWhere((News n) => n.Id == news.Id)
+                 .WithParam("tagsIds", data.tagsIds)
+                 .Create("(n)-[:TAGGED]->(t)")
+                 .ExecuteWithoutResultsAsync();
+
+                await _neo4j.Cypher
+                .Match("(n:News), (u:User)")
+                .Where((News n, User u) => n.Id == news.Id && data.authorId == u.Id)
+                .Create("(n)-[:WRITTEN]->(u)")
+                .Create("(n)<-[:WRITTEN]-(u)")
+                .ExecuteWithoutResultsAsync();
+
+                await _neo4j.Cypher
+                    .Match("(n:News), (l:Location)")
+                    .Where((News n, Location l) => n.Id == news.Id && l.Id == data.locationId)
+                    .Create("(n)-[:LOCATED]->(l)")
+                    .Create("(n)<-[:LOCATED]-(l)")
+                    .ExecuteWithoutResultsAsync();
+
+
+                //insert in newest
+                var db = _redis.GetDatabase();
+
+                //if max length of new news is here, then take out the last one 
+                if (db.ListLength(_newestNewsKey) > 20)
+                {
+                    db.ListRightPop(_newestNewsKey);
+                }
+
+                db.ListLeftPush(_newestNewsKey, news.Id);
+
+                await db.PublishAsync(_channelForNewestNews, news.Id);
 
                 return Ok(news);
             }
@@ -397,6 +504,177 @@ namespace NewsFlowAPI.Controllers
                 var newsReturnResults = await Task.WhenAll(newsReturnTasks);
 
                 return Ok(newsReturnResults.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+
+        [HttpGet("news/getNewestNews2")]
+        public async Task<ActionResult> GetNewestNews2()
+        {
+            try
+            {
+                var db = _redis.GetDatabase();
+
+                var newsValues = await db.ListRangeAsync(_newestNewsKey);
+                var newsIds = newsValues.Select(news => Int64.Parse(news));
+
+                var news = await _neo4j.Cypher
+                                    .Match("(n:News)-[:WRITTEN]->(u:User)")
+                                    .Where("any(newsId IN $newsIds WHERE newsId = n.Id)")
+                                    .WithParam("newsIds", newsIds)
+                                    .Return((n, u) => new NewsReturnDTO
+                                    {
+                                        Id = n.As<News>().Id,
+                                        Title = n.As<News>().Title,
+                                        Text = n.As<News>().Text,
+                                        Summary = n.As<News>().Summary,
+                                        ImageUrl = n.As<News>().ImageUrl,
+                                        locationId = n.As<News>().LocationId,
+                                        ViewsCount = n.As<News>().ViewsCount,
+                                        LikeCount = n.As<News>().LikeCount,
+                                        authorId = n.As<News>().AuthorId,
+                                        PostTime = n.As<News>().PostTime,
+                                        authorName = u.As<User>().Name
+                                    }).ResultsAsync;
+
+                var newsResult = news.ToList();
+                                    
+
+                return Ok(newsResult);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+
+        [HttpPost("news/getNewestNewsFiltered2")]
+        public async Task<ActionResult> GetNewestNewsFiltered2([FromBody] NewsFilterDTO filter)
+        {
+            try
+            {
+
+                var db = _redis.GetDatabase();
+
+                var newsValues = await db.ListRangeAsync(_newestNewsKey);
+                var newsIds = newsValues.Select(news => Int64.Parse(news));
+
+                var res = await _neo4j.Cypher
+                            .Match("(n:News)-[:WRITTEN]->(u:User)")
+                            .Where("any(newsId IN $newsIds WHERE newsId = n.Id)")
+                            .WithParam("newsIds", newsIds)
+                            .Return(n => n.As<News>())
+                            .ResultsAsync;
+
+                var r = res.ToList();
+
+                //string queryString = "match (n:News)-[:WRITTEN]->(u:User) where any(newsId IN {newsIds} WHERE newsId = n.Id) ";
+                var query = _neo4j.Cypher
+                            .Match("(n:News)-[:WRITTEN]->(u:User)")
+                            .Where("any(newsId IN $newsIds WHERE newsId = n.Id)")
+                            .WithParam("newsIds", newsIds);
+                bool first = false;
+
+                if (filter.LocationId > 0)
+                {
+                    if (!first)
+                    {
+                        query = query.AndWhere((News n) => n.LocationId == filter.LocationId);
+                    }
+                    else
+                    {
+                        query = query.Where((News n) => n.LocationId == filter.LocationId);
+                        first = false;
+                    }
+
+                }
+                if (filter.AuthorId > 0)
+                {
+                    if (!first)
+                    {
+                        query = query.AndWhere((News n) => n.AuthorId == filter.AuthorId);
+                    }
+                    else
+                    {
+                        query = query.Where((News n) => n.AuthorId == filter.AuthorId);
+                        
+                        first = false;
+                    }
+                    //queryString += $"where n.AuthorId={filter.AuthorId}";
+                }
+                //queryString += "return n.Id, n.Title, n.Text, n.Summary, n.ImageUrl, n.LocationId, n.ViewsCount, n.LikeCount, n.AuthorId, n.PostTime, u.Name";
+
+/*                query = query.Return((n, u) => new NewsReturnDTO
+                {
+                    Id = n.As<News>().Id,
+                    Title = n.As<News>().Title,
+                    Text = n.As<News>().Text,
+                    Summary = n.As<News>().Summary,
+                    ImageUrl = n.As<News>().ImageUrl,
+                    locationId = n.As<News>().LocationId,
+                    ViewsCount = n.As<News>().ViewsCount,
+                    LikeCount = n.As<News>().LikeCount,
+                    authorId = n.As<News>().AuthorId,
+                    PostTime = n.As<News>().PostTime,
+                    authorName = u.As<User>().Name
+                });*/
+
+                var results = query.Return((n, u) => new NewsReturnDTO
+                {
+                    Id = n.As<News>().Id,
+                    Title = n.As<News>().Title,
+                    Text = n.As<News>().Text,
+                    Summary = n.As<News>().Summary,
+                    ImageUrl = n.As<News>().ImageUrl,
+                    locationId = n.As<News>().LocationId,
+                    ViewsCount = n.As<News>().ViewsCount,
+                    LikeCount = n.As<News>().LikeCount,
+                    authorId = n.As<News>().AuthorId,
+                    PostTime = n.As<News>().PostTime,
+                    authorName = u.As<User>().Name
+                }).ResultsAsync;
+
+
+
+                var news = (await results).ToList();
+
+                if (filter.TagIds.Count > 0)
+                {
+                    var newsFiltered = await _neo4j.Cypher
+                        .Match("(u:User)<-[:WRITTEN]-(n:News)-[:TAGGED]->(t:Tag)")
+                        .Where("any(newsId in $newsIds where newsId in n.Id)")
+                        .WithParam("newsIds", news.Select(p => p.Id))
+                        .AndWhere("any(tagId in $tagIds where tagId = t.Id)")
+                        .WithParam("tagIds", filter.TagIds)
+                        .Return((n, u) => new NewsReturnDTO
+                        {
+                            Id = n.As<News>().Id,
+                            Title = n.As<News>().Title,
+                            ImageUrl = n.As<News>().ImageUrl,
+                            authorName = u.As<User>().Name,
+                            Summary = n.As<News>().Summary,
+                            Text = n.As<News>().Text,
+                            authorId = n.As<News>().AuthorId,
+                            ViewsCount = n.As<News>().ViewsCount,
+                            LikeCount = n.As<News>().LikeCount,
+                            PostTime = n.As<News>().PostTime,
+
+                        }).ResultsAsync;
+
+
+                    var newsFilteredResult = newsFiltered.ToList();
+                    return Ok(newsFiltered.ToList());
+                    //queryString += "where all(tagId in {tagIds} where tagId in n.Ids) ";
+                    //query = query.AndWhere("any(tagId in $tagIds where tagId in n.Ids)");
+                    first = false;
+                }
+
+                return Ok(news);
             }
             catch (Exception e)
             {

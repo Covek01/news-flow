@@ -68,25 +68,35 @@ const NewsPage: React.FC<props> = (
         // }
     }
 
+    const initializeSubscribeInfo = async() => {
+        const {data, isOkay} = await UserService.DoUserFollowWriter(myid, newsInfo.authorId)
+        
+        if (isOkay){
+            setSubscribedToWriter(data)
+        }
+    }
+
     const initializeInfo = async () => {
         const info = await NewsService.ClickNews(newsId)
-        setNewsInfo(info[0]);
-        // setLikedCount(newsInfo.likeCount)
+        if (info.length > 0){
+            setNewsInfo(info[0])
+        }
+
+        setLikedCount(newsInfo.likeCount)
+
         const user: UserWriter[] = await UserService.GetUserWriterById(info[0].authorId)
         if (user.length > 0){
             setWriterName(user[0].name)
         }
-
-        
-      
-
     }
 
     const initializeLikeCount = async () => {
         const {data, status} = await NewsService.IsNewsLikedByUser(myid, newsId)
         if (status){
             setIsLikedByMe(data)
-        }
+        }  
+        
+        
 
         setLikedCount(newsInfo.likeCount)
     }
@@ -99,6 +109,8 @@ const NewsPage: React.FC<props> = (
     useEffect(() => {
         initializeLikeCount()
     }, [newsInfo])
+
+    
     
     return(
         <div>

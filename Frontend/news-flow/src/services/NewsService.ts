@@ -7,7 +7,7 @@ class NewsService  {
     
     public async GetNewestNews(){
         try{
-            const {data, status} = await api.get<News[]>("/news/getNewestNews")
+            const {data, status} = await api.get<News[]>("/news/getNewestNews2")
 
             console.log(JSON.stringify(data, null, 4));
             console.log('response status is: ', status);
@@ -55,6 +55,33 @@ class NewsService  {
     public async GetForYou(){
         try{
             const {data, status} = await api.get<News[]>("news/GetForYou")
+
+            console.log(JSON.stringify(data, null, 4));
+            console.log('response status is: ', status);
+
+            return data
+        }
+        catch (error) {
+            if (axios.isAxiosError(error)) {
+                console.log('error message: ', error.message);
+                
+                const errObject: News[] = []
+                return errObject;
+            } else {
+                console.log('unexpected error: ', error);
+
+                const errObject: News[] = []
+                return errObject;
+            }
+        }
+    }
+
+
+
+    public async GetFilteredNews(tagIds: number[], authorId: number, locationId: number){
+        try{
+            const filter = {tagIds: tagIds, authorId: authorId, locationId: locationId}
+            const {data, status} = await api.post<News[]>("news/getNewestNewsFiltered2", filter)
 
             console.log(JSON.stringify(data, null, 4));
             console.log('response status is: ', status);

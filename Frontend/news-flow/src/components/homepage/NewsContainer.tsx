@@ -12,7 +12,6 @@ interface NewsContainerProps{
 
 const NewsContainer: React.FC<NewsContainerProps> = ({newsList}) => {
 
-
     return (
         <div>
             <Box display="flex" flexDirection="column" alignItems="center">
