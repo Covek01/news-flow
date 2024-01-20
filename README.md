@@ -1,19 +1,24 @@
 # redis_neo4j_news_app
 
-*
-*   Aleksandar Stjković
+* Aleksandar Stojković [18432]
+* Nikola Stojiljković [18430]
 
-Aleksandar Stojković
+  
 Neki od registrovanih naloga:
+email:aleksandarstojkovic@elfak.rs
+passowrd:Test123
+role:User
 
-email: milanstojkovic2707@gmail.com
-lozinka: 123
+email:aleksandarstojkovic2001@gmail.com
+password:Test123
+role:User
 
-email: davinicniki1@gmail.com
-lozinka: 123
+email:nikola.stojiljkovic@elfak.rs
+password:Test123
+role:Author
 
-Za pokretanje aplikacije potrebno je startovati main api (ByeWorld-backend),
-Za funkcionisanje otpremanja CV-a, potrebno je pokrenuti CVUploader projekat,
-Za pokretanje klijentske strane potrebno je pozicionirati se u byeworld-frontend folder i izvrsiti komande:
+Za pokretanje aplikacije potrebno je startovati main api (NewsFlowAPI),
+Za kreiranje vesti potrebno je startovati api za upload (UploadAPI),
+Za pokretanje klijentske strane potrebno je pozicionirati se u Frontend/news-flow folder i izvrsiti komande:
 npm install
 npm run start
