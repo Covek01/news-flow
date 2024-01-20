@@ -3,19 +3,24 @@
 * Aleksandar Stojković [18432]
 * Nikola Stojiljković [18430]
 
+
   
 Neki od registrovanih naloga:
 email:aleksandarstojkovic@elfak.rs
 passowrd:Test123
 role:User
 
+
 email:aleksandarstojkovic2001@gmail.com
 password:Test123
 role:User
 
+
 email:nikola.stojiljkovic@elfak.rs
 password:Test123
 role:Author
+
+
 
 Za pokretanje aplikacije potrebno je startovati main api (NewsFlowAPI),
 Za kreiranje vesti potrebno je startovati api za upload (UploadAPI),
