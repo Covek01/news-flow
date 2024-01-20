@@ -25,16 +25,16 @@ const Personal: React.FC = () => {
 
         const newsObject: News[] = news.map((x) => {
             return new News(
-                    (x as any).id,
-                    (x as any).title,
-                    (x as any).url,
-                    (x as any).authorName,
-                    (x as any).summary,
-                    (x as any).text,
-                    (x as any).authorId,
-                    (x as any).viewsCount,
-                    (x as any).likesCount,
-                    (x as any).postTime
+                    (x as News).id,
+                    (x as News).title,
+                    (x as News).imageUrl,
+                    (x as News).authorName,
+                    (x as News).summary,
+                    (x as News).text,
+                    (x as News).authorId,
+                    (x as News).viewsCount,
+                    (x as News).likeCount,
+                    (x as News).date
                     )
         })
         setNewsToShow(newsObject)     

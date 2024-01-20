@@ -16,6 +16,7 @@ import NewsPage from "./components/newspage/NewsPage";
 import { SignIn } from "./components/SignIn/SignIn";
 import NotAuthenticatedGuard from "./components/RouteGuards/NotAuthenticatedGuard";
 import WriteNews from "./components/writenews/WriteNews";
+import LandingPage from "./components/landingpage/LandingPage";
 
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
                         <Route path="/trending" element={<NotAuthenticatedGuard>{<Trending />}</NotAuthenticatedGuard> }></Route>
                         <Route path="/personal" element={<NotAuthenticatedGuard>{<Personal />}</NotAuthenticatedGuard>}></Route>
                         <Route path="/writenews" element={<NotAuthenticatedGuard>{<WriteNews />}</NotAuthenticatedGuard>}></Route>
+                        <Route path="/landing" element={<LandingPage />}></Route>
                         <Route
                             path="/signin"
                             element={<AuthenticatedGuard>{<SignIn />}</AuthenticatedGuard>}
