@@ -43,7 +43,7 @@ namespace NewsFlowAPI.Controllers
         {
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(u.Password);
             var nameStrings = u.Name.Split(" ");
-            string generatedImage = $"https://ui-avatars.com/api/?background=311b92&color=fff&name={nameStrings.First()}+{nameStrings.Last()}&rounded=true";
+            string generatedImage = $"https://ui-avatars.com/api/?background=f18d00&color=fff&name={nameStrings.First()}+{nameStrings.Last()}&rounded=true";
             var newUser = new User
             {
                 Id = await _ids.UserNext(),

@@ -113,10 +113,7 @@ const Bar: React.FC = () => {
                                     alt={user?.name ?? "User Name"}
                                     src={
                                         user?.imageUrl && user?.imageUrl?.length > 0
-                                            ? user?.imageUrl.replace(
-                                                "background=311b92",
-                                                "background=fdd835"
-                                            )
+                                            ? user?.imageUrl
                                             : "https://ui-avatars.com/api/?background=311b92&color=fff&name=N+F&rounded=true"
                                     }
                                 />
