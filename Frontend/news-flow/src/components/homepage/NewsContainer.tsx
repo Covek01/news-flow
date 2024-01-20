@@ -15,7 +15,9 @@ const NewsContainer: React.FC<NewsContainerProps> = ({newsList}) => {
     return (
         <div>
             <Box display="flex" flexDirection="column" alignItems="center">
-            {newsList.map((newsItem, index) => (
+            {newsList
+            .sort((a, b) => b.id - a.id)
+            .map((newsItem, index) => (
                 <NewsBox
                     key={index}
                     id={newsItem.id}

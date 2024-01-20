@@ -472,7 +472,7 @@ namespace NewsFlowAPI.Controllers
             {
                 var db = _redis.GetDatabase();
 
-                var news = await db.ListRangeAsync(_newestNewsKey);
+                var news = db.ListRange(_newestNewsKey);
                 var newsDeserialized = new List<News>();
 
                 foreach (var n in news)

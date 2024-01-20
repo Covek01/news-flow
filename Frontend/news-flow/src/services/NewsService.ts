@@ -1,5 +1,5 @@
 import axios from "axios"
-import {api} from "./Service"
+import {api, upService} from "./Service"
 import News from "../models/News"
 import { error } from "console";
 
@@ -195,7 +195,7 @@ class NewsService  {
 
     public async CreateNews(news: object){
         try{
-            const {data, status} = await api.post<boolean>(`news/createnews`, news)
+            const {data, status} = await upService.post<boolean>(`Uploader/news/CreateNews2/`, news)
 
             console.log(JSON.stringify(data, null, 4));
             console.log('response status is: ', status);
