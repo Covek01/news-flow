@@ -80,8 +80,11 @@ const NewsPage: React.FC<props> = (
 
     const initializeInfo = async () => {
         const info = await NewsService.ClickNews(newsId)
+        
         if (info.length > 0) {
+            info[0].postTime=new Date(info[0].postTime);
             setNewsInfo(info[0])
+            
         }else{
             navigate('/notfound');
         }
@@ -136,7 +139,7 @@ const NewsPage: React.FC<props> = (
                 </Typography>
                 <Typography variant="body2" component="div"
                     style={{ marginBottom: '2%' }}>
-                    {"Written: 2.2.2023"}
+                    {`Written: ${newsInfo.postTime.getDate()}.${newsInfo.postTime.getMonth()+1}.${newsInfo.postTime.getFullYear()}`}
                 </Typography>
                 <CardMedia
                     component="img"

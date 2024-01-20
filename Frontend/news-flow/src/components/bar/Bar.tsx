@@ -73,7 +73,7 @@ const Bar: React.FC = () => {
                         >
                             News Flow
                         </Typography>
-                        {isAuthenticated()&& <Search style={{ width: '60%' }}>
+                        {/* {isAuthenticated()&& <Search style={{ width: '60%' }}>
                             <SearchIconWrapper>
                                 <SearchIcon />
                             </SearchIconWrapper>
@@ -81,7 +81,7 @@ const Bar: React.FC = () => {
                                 placeholder="Search…"
                                 inputProps={{ 'aria-label': 'search' }}
                             />
-                        </Search>}
+                        </Search>} */}
                     </Box>
                     <Box sx={{ flexGrow: 1 }} />
                     <Box sx={{ display: 'flex', alignItems: 'center' /*{ xs: 'none', sm: 'block' }*/ }}>
