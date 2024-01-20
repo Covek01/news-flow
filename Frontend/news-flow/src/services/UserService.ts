@@ -121,6 +121,30 @@ class UserService {
         }
     }
 
+
+    public async DoUserFollowWriter(userId: number, writerId: number){
+        try{
+            const {data, status} = await api.get<boolean>(`user/DoUserFollowWriter/${userId}/${writerId}`)
+
+            console.log(JSON.stringify(data, null, 4));
+            console.log('response status is: ', status);
+
+            return {data, isOkay: true}
+        }
+        catch (error) {
+            if (axios.isAxiosError(error)) {
+                console.log('error message: ', error.message);
+                
+                const data = false
+                return {data, isOkay: false}
+            } else {
+                console.log('unexpected error: ', error);
+
+                const data = false
+                return {data, isOkay: false}
+            }
+        }
+    }
 }
 
 export default new UserService

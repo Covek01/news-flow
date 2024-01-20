@@ -24,7 +24,6 @@ interface NewsContainerProps{
 
 const NewsContainer: React.FC<NewsContainerProps> = ({newsList}) => {
 
-
     return (
         <div>
             <Box display="flex" flexDirection="column" alignItems="center">
@@ -37,7 +36,7 @@ const NewsContainer: React.FC<NewsContainerProps> = ({newsList}) => {
                     imageUrl={newsItem.imageUrl}
                     likesCount={newsItem.likeCount}
                     viewCount={newsItem.viewsCount}
-                    datetimePosted={newsItem.date}
+                    datetimePosted={newsItem.postTime}
                     />
             ))}
             </Box>

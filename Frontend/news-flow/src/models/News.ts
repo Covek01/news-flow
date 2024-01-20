@@ -10,7 +10,7 @@ class News{
     authorId: number
     viewsCount: number
     likeCount: number
-    date: Date
+    postTime: Date
 
     constructor(
         id: number = 0,
@@ -33,7 +33,7 @@ class News{
         this.authorId = authorId
         this.viewsCount = viewsCount
         this.likeCount = likeCount
-        this.date = date
+        this.postTime = date
     }
     
 }

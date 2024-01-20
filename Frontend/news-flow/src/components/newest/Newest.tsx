@@ -20,6 +20,8 @@ import { useAuthContext } from "../../contexts/auth.context";
 import UserService from "../../services/UserService";
 import User from "../../models/User";
 import UserWriter from "../../models/UserWriter";
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import NewsService from "../../services/NewsService";
 
 
 interface NewestProps{
@@ -131,7 +133,7 @@ const Newest: React.FC = () => {
             return new News(
                     (x as any).id,
                     (x as any).title,
-                    (x as any).url,
+                    (x as any).imageUrl,
                     (x as any).authorName,
                     (x as any).summary,
                     (x as any).text,
@@ -163,7 +165,11 @@ const Newest: React.FC = () => {
         
     }
 
-
+    const filterNews = async () => {
+        const tagIds = selectedTags.map(tag => tag.id)
+        const news = await NewsService.GetFilteredNews(tagIds, selectedWriter?.id ?? 0, selectedLocation?.id ?? 0)
+        setNewsToShow(news)
+    }
 
     React.useEffect(() => {
         initalizeNews()
@@ -173,10 +179,48 @@ const Newest: React.FC = () => {
         <div>
             <Bar />
             
-            <div style={{marginLeft: 'auto', marginRight: 'auto', width: '80%'}}>
-                <Stack direction="row">
+            <div style={{backgroundColor: theme.palette.secondary.light, marginLeft: 'auto', marginRight: 'auto', marginTop: '3%', maxWidth: '750px', width: '90%', border: `2px solid ${theme.palette.primary.light}`}}>
+            <div style={{marginLeft: 'auto', marginRight: 'auto', width: '80%', marginTop: '3%'}}>
+               
+                <Autocomplete   
+                    style={{marginTop: '1%', marginBottom: '1%', width: '40%',  maxWidth: '300px'}}
+                    options={locations.map((location) => location.name)}
+                    getOptionLabel={(option) => option}
+                    value={selectedLocation?.name ?? ""}
+                    onChange={async (_, newValue) => {
+                        const loc = await LocationService.GetLocationByName(newValue ?? "")
+                        setSelectedLocation(loc)
+                    }}
+                    onInputChange={async (_, newInputValue) => {
+                        const newLocations = await getLocations(newInputValue);
+                        setLocations(newLocations);
+                    }}
+                    renderInput={(params) => (
+                    <TextField {...params} label="Location" variant="outlined" />
+                    )}
+                />
+                
+                <Autocomplete   
+                    style={{marginTop: '1%', marginBottom: '1%', width: '40%',  maxWidth: '300px'}}
+                    options={writers.map((author) => author.name)}
+                    getOptionLabel={(option) => option}
+                    value={selectedWriter?.name ?? ""}
+                    onChange={async (_, newValue) => {
+                        const loc = await UserService.GetWriterByName(newValue ?? "")
+                        const val = (loc.length > 0)? loc[0] : null
+                        setSelectedWriter(val)
+                    }}
+                    onInputChange={async (_, newInputValue) => {
+                        const newWriters = await getWriters(newInputValue);
+                        setWriters(newWriters);
+                    }}
+                    renderInput={(params) => (
+                    <TextField {...params} label="Writer" variant="outlined" />
+                    )}
+                />
+                 <Stack direction="row">
                     <Autocomplete
-                        style={{marginTop: '5%', width: '40%', maxWidth: '300px'}}
+                        style={{width: '40%', maxWidth: '300px'}}
                         options={tags.map((tag) => tag.name)}
                         getOptionLabel={(option) => option}
                         value={selectedTag}
@@ -203,7 +247,7 @@ const Newest: React.FC = () => {
                         insertListedTag(chosenTag)
                     }}
                         style={{ height: '50%', width: '20%',  maxWidth: '150px', borderRadius: '5%', backgroundColor: theme.palette.primary.main,
-                        color: theme.palette.primary.contrastText, alignSelf: 'center', marginTop: '4.5%', marginLeft: '4%'}}>
+                        color: theme.palette.primary.contrastText, alignSelf: 'center',  marginLeft: '4%'}}>
                         <AddIcon />
                         <Typography sx={{ fontWeight: 'bold' }} textAlign="center">ADD</Typography>
                     </IconButton>
@@ -216,41 +260,15 @@ const Newest: React.FC = () => {
                         } />
                     })}
                 </Stack>
-                <Autocomplete   
-                    style={{marginTop: '1%', marginBottom: '1%', width: '40%',  maxWidth: '300px'}}
-                    options={locations.map((location) => location.name)}
-                    getOptionLabel={(option) => option}
-                    value={selectedLocation?.name ?? ""}
-                    onChange={async (_, newValue) => {
-                        const loc = await LocationService.GetLocationByName(newValue ?? "")
-                        setSelectedLocation(loc)
+                <IconButton color="inherit" onClick={async e => {
+                        await filterNews()
                     }}
-                    onInputChange={async (_, newInputValue) => {
-                        const newLocations = await getLocations(newInputValue);
-                        setLocations(newLocations);
-                    }}
-                    renderInput={(params) => (
-                    <TextField {...params} label="Location" variant="outlined" />
-                    )}
-                />
-                <Autocomplete   
-                    style={{marginTop: '1%', marginBottom: '1%', width: '40%',  maxWidth: '300px'}}
-                    options={writers.map((author) => author.name)}
-                    getOptionLabel={(option) => option}
-                    value={selectedWriter?.name ?? ""}
-                    onChange={async (_, newValue) => {
-                        const loc = await UserService.GetWriterByName(newValue ?? "")
-                        const val = (loc.length > 0)? loc[0] : null
-                        setSelectedWriter(val)
-                    }}
-                    onInputChange={async (_, newInputValue) => {
-                        const newWriters = await getWriters(newInputValue);
-                        setWriters(newWriters);
-                    }}
-                    renderInput={(params) => (
-                    <TextField {...params} label="Location" variant="outlined" />
-                    )}
-                />
+                        style={{ height: '50%', width: '20%', marginBottom: '2%',  maxWidth: '150px', borderRadius: '5%', backgroundColor: theme.palette.primary.main,
+                        color: theme.palette.primary.contrastText, alignSelf: 'center', marginTop: '4.5%', marginLeft: '4%'}}>
+                        <FilterAltIcon />
+                        <Typography sx={{ fontWeight: 'bold' }} textAlign="center">FILTER</Typography>
+                </IconButton>
+            </div>
             </div>
             <NewsContainer newsList={newsToShow}/>
         </div>
