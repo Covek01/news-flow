@@ -68,8 +68,8 @@ const NewsPage: React.FC<props> = (
         // }
     }
 
-    const initializeSubscribeInfo = async() => {
-        const {data, isOkay} = await UserService.DoUserFollowWriter(myid, newsInfo.authorId)
+    const initializeSubscribeInfo = async (followerId: number) => {
+        const {data, isOkay} = await UserService.DoIfollowHim(followerId)
         
         if (isOkay){
             setSubscribedToWriter(data)
@@ -84,10 +84,15 @@ const NewsPage: React.FC<props> = (
 
         setLikedCount(newsInfo.likeCount)
 
-        const user: UserWriter[] = await UserService.GetUserWriterById(info[0].authorId)
-        if (user.length > 0){
-            setWriterName(user[0].name)
+        const users: UserWriter[] = await UserService.GetUserWriterById(info[0].authorId)
+        if (users.length > 0){
+            setWriterName(users[0].name)
         }
+        const p = user?.id ?? -1
+        if (info.length > 0){
+            initializeSubscribeInfo(info[0].authorId)
+        }
+
     }
 
     const initializeLikeCount = async () => {
@@ -103,14 +108,15 @@ const NewsPage: React.FC<props> = (
 
     useEffect(() => {
         initializeInfo()
-
     }, [])
 
     useEffect(() => {
         initializeLikeCount()
     }, [newsInfo])
 
-    
+    const setSubscribeState = (flag: boolean) => {
+        setSubscribedToWriter(flag)
+    }
     
     return(
         <div>
@@ -142,7 +148,7 @@ const NewsPage: React.FC<props> = (
                             Author: {writerName}
                         </Typography>
                         {(myid !== newsInfo.authorId)? 
-                             <SubscribeButton myid={myid} subscribedId={newsInfo.authorId} isSubscribed={subscribedToWriter}/>
+                             <SubscribeButton updateSub={setSubscribeState} myid={myid} subscribedId={newsInfo.authorId} isSubscribed={subscribedToWriter}/>
                              :
                              <></>
                         }

@@ -3,36 +3,40 @@ import {Button, Typography} from '@mui/material'
 import theme from '../Theme';
 import UserService from '../../services/UserService';
 
+
 interface props{
     myid: number
     subscribedId: number
     isSubscribed: boolean
+    updateSub: any
 }
 
-const SubscribeButton: React.FC<props> = ({myid, subscribedId, isSubscribed}) => {
-    const [isSubscribedToUser, setIsSubscribedToUser] = useState<boolean>(isSubscribed) 
+const SubscribeButton: React.FC<props> = ({myid, subscribedId, isSubscribed, updateSub}) => {
+
+    
+
     const handleClickSubscribe = async () => {
-        setIsSubscribedToUser(true)
+        updateSub(true)
         const okay = await UserService.SubscribeTo([subscribedId])
 
         if (okay < 0){
-            setIsSubscribedToUser(false)
+            updateSub(false)
         }
     }
 
     const handleClickUnsubscribe = async () => {
-        setIsSubscribedToUser(false)
+        updateSub(false)
         const okay = await UserService.UnsubscribeFrom([subscribedId])
 
         if (okay < 0){
-            setIsSubscribedToUser(true)
+            updateSub(true)
         }
     }
 
 
     return(
         <>
-        {(isSubscribedToUser)? 
+        {(isSubscribed)? 
         <Button style={{backgroundColor: theme.palette.primary.main}} onClick={async e => {
             handleClickUnsubscribe()
         }}>

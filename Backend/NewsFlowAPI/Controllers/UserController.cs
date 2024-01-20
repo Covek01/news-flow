@@ -603,7 +603,7 @@ namespace NewsFlowAPI.Controllers
 
                 var lista = (await _neo4j.Cypher
                     .Match("(u1:User)-[st:SUBSCRIBED_TO]->(u2:User)")
-                    .AndWhere((User u1, User u2) => u1.Id == userId && u2.Id == followedId)
+                    .Where((User u1, User u2) => u1.Id == userId && u2.Id == followedId)
                     .Return((u1, u2) => new
                     {
                         id1 = u1.As<User>().Id,
@@ -615,6 +615,39 @@ namespace NewsFlowAPI.Controllers
                 return Ok(lista.Count != 0);
             }
             catch(Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        //[Authorize]
+        [HttpGet("DoIFollowHim/{followedId}")]
+        public async Task<ActionResult> DoIFollowHim([FromRoute] long followedId)
+        {
+            try
+            {
+                 var claims = HttpContext.User.Claims;
+
+                var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
+
+
+                if (userId < 1 || followedId < 1)
+                    throw new Exception("IDS ARE BELOW 1");
+
+                var lista = (await _neo4j.Cypher
+                    .Match("(u1:User)-[st:SUBSCRIBED_TO]->(u2:User)")
+                    .Where((User u1, User u2) => u1.Id == userId && u2.Id == followedId)
+                    .Return((u1, u2) => new
+                    {
+                        id1 = u1.As<User>().Id,
+                        id2 = u2.As<User>().Id
+                    }).ResultsAsync).ToList();
+
+
+
+                return Ok(lista.Count != 0);
+            }
+            catch (Exception ex)
             {
                 return StatusCode(500, ex.Message);
             }
