@@ -153,6 +153,26 @@ namespace NewsFlowAPI.Controllers
 
                 await db.KeyDeleteAsync(email);
 
+                await _neo4j.Cypher
+                    .Merge("(l:Location {Name:$locationName})")
+                    .OnCreate()
+                    .Set("l.Id=$locationId")
+                    .With("l")
+                    .Match("(u:User)")
+                    .Where((User u) => u.Id == user.Id)
+                    .Match("(l2:Location {Name:$World})")
+                    .Merge("(u)-[:FOLLOWS_LOCATION]->(l)")
+                    .Merge("(u)-[:FOLLOWS_LOCATION]->(l2)")
+                    .WithParams(new
+                    {
+                        locationName = user.City,
+                        locationId = await _ids.LocationNext(),
+                        World="World"
+                    })
+                    .ExecuteWithoutResultsAsync();
+                    
+
+
                 return Ok("Account confirmed");
             }
 
@@ -236,7 +256,7 @@ namespace NewsFlowAPI.Controllers
                 }
 
                 var timeActiveDt = DateTime.ParseExact(timeActive, "ddMMyyyyHHmmss", null);
-                if (DateTime.Now - timeActiveDt <= TimeSpan.FromMinutes(5))
+                if (DateTime.Now - timeActiveDt <= TimeSpan.FromMinutes(15))
                 {
                     count++;
                 }
@@ -428,7 +448,7 @@ namespace NewsFlowAPI.Controllers
             var claims = HttpContext.User.Claims;
 
             var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-            userId = 1;///I OVO OBABVEZNO DA SE COMMENT AAAAAA
+
 
             if (userId == -1)
                 return Unauthorized("Error user not signed in");
@@ -487,7 +507,6 @@ namespace NewsFlowAPI.Controllers
             var claims=HttpContext.User.Claims;
 
             var userId = Int32.Parse(claims.Where(c => c.Type == "Id").FirstOrDefault()?.Value ?? "-1");
-            //userId = 7;/////OVO OBAVEZNO DA SE COMMENT NAKON TESTIRANJE 
 
             if (userId==-1)
                 return Unauthorized("Error user not signed in");
