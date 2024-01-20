@@ -1,4 +1,5 @@
 using Neo4jClient;
+using NewsFlowAPI.Services;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,10 @@ builder.Services.AddSingleton<IBoltGraphClient>(options =>
     neo4jClient.ConnectAsync().Wait();
     return neo4jClient;
 });
+
+
+builder.Services.AddSingleton<IIdentifierService, IdentifierService>();
+
 
 builder.Services.AddCors(options =>
 {

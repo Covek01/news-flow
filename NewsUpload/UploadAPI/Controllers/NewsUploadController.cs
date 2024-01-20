@@ -120,15 +120,8 @@ namespace UploadAPI.Controllers
                 //insert in newest
                 var db = _redis.GetDatabase();
 
-                //if max length of new news is here, then take out the last one 
-                if (db.ListLength(_newestNewsKey) > 20)
-                {
-                    db.ListRightPop(_newestNewsKey);
-                }
 
-                db.ListLeftPush(_newestNewsKey, news.Id);
-
-                await db.PublishAsync(_channelForNewestNews, news.Id);
+                var numberOfReceived = await db.PublishAsync(_channelForNewestNews, news.Id);
 
                 return Ok(news);
             }

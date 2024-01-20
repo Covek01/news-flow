@@ -33,6 +33,9 @@ namespace NewsFlowAPI.Controllers
             _neo4j = neo4j;
             _ids = ids;
             _config = config;
+
+            RedisNewestSubscriber sub = new RedisNewestSubscriber(_redis, _neo4j);
+            sub.SubscribeToSmallApi();
         }
 
         [HttpPost("signup")]

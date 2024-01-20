@@ -61,7 +61,11 @@ namespace NewsFlowAPI.Controllers
             _trendSub = trendSub;
             _queryCache = queryCache;
 
+            RedisNewestSubscriber sub = new RedisNewestSubscriber(_redis, _neo4j);
+            sub.SubscribeToSmallApi();
+
         }
+
 
         /* public async Task CheckAndInitializeKeysInRedis()
          {
