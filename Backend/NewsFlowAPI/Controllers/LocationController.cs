@@ -30,6 +30,7 @@ namespace NewsFlowAPI.Controllers
 
             RedisNewestSubscriber sub = new RedisNewestSubscriber(_redis, _neo4j);
             sub.SubscribeToSmallApi();
+
         }
         [Authorize]
         [HttpPost("create/{name}")]

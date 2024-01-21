@@ -39,8 +39,9 @@ namespace NewsFlowAPI.Services
                     }
                     var id = Int64.Parse(message);
                     db.ListLeftPush(_newestNewsKey, message);
-                    isSubscribed = true;
+
                 });
+                isSubscribed = true;
             }
 
         }
