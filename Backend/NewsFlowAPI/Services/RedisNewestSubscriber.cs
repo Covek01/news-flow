@@ -12,6 +12,7 @@ namespace NewsFlowAPI.Services
         //private ISubscriber subscriber;
         private readonly string _channelForNewestNews = "newest:channel";
         private readonly string _newestNewsKey = "newestnews";
+        public static object x;
 
         public RedisNewestSubscriber(IConnectionMultiplexer redis, IBoltGraphClient neo4j)
         {
@@ -23,27 +24,29 @@ namespace NewsFlowAPI.Services
 
         public void SubscribeToSmallApi()
         {
-            if (!isSubscribed)
-            {
-                var pubsub = _redis.GetSubscriber();
-
-                pubsub.Subscribe(_channelForNewestNews, (channel, message) =>
+                if (!isSubscribed)
                 {
-                    //insert in newest
-                    var db = _redis.GetDatabase();
+                    var pubsub = _redis.GetSubscriber();
 
-                    //if max length of new news is here, then take out the last one 
-                    if (db.ListLength(_newestNewsKey) > 20)
+                    pubsub.Subscribe(_channelForNewestNews, (channel, message) =>
                     {
-                        db.ListRightPop(_newestNewsKey);
-                    }
-                    var id = Int64.Parse(message);
-                    db.ListLeftPush(_newestNewsKey, message);
+                        //insert in newest
+                        var db = _redis.GetDatabase();
 
-                });
+                        //if max length of new news is here, then take out the last one 
+                        if (db.ListLength(_newestNewsKey) > 20)
+                        {
+                            db.ListRightPop(_newestNewsKey);
+                        }
+                        var id = Int64.Parse(message);
+                        db.ListLeftPush(_newestNewsKey, message);
+
+                    });
+                    isSubscribed = true;
+                }
                 isSubscribed = true;
-            }
-
         }
+
     }
+    
 }

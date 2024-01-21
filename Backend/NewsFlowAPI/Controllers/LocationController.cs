@@ -28,8 +28,6 @@ namespace NewsFlowAPI.Controllers
             _ids = ids;
             _cache = cache;
 
-            RedisNewestSubscriber sub = new RedisNewestSubscriber(_redis, _neo4j);
-            sub.SubscribeToSmallApi();
 
         }
         [Authorize]
